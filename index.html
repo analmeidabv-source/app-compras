@@ -1165,7 +1165,6 @@
     </div>
 
     <script>
-        const INVENTORY_STORAGE_KEY = 'fk_procurement_inventory';
         const PROFILE_STORAGE_KEY = 'fk_procurement_profile';
         const PRODUCT_APPROVALS_STORAGE_KEY = 'fk_procurement_product_approvals';
         const SESSION_STORAGE_KEY = 'fk_kabiorder_session';
@@ -1499,7 +1498,7 @@
             updateSidebarUserInfo();
             updateAddProductModalForProfile();
             updateAlertPanelForProfile();
-            initializeAppContent();
+            await initializeAppContent();
         }
 
         async function handleLoginSubmit() {
@@ -1992,7 +1991,7 @@
             renderAlerts();
         }
 
-        function approveProductApproval(approvalId) {
+        async function approveProductApproval(approvalId) {
             if (!canApproveProducts()) return;
 
             const request = productApprovals.find(item => item.id === approvalId && item.status === 'pending');
@@ -2002,18 +2001,19 @@
                 return alert('Este produto já existe na Base de Dados.');
             }
 
-            inventory.unshift({
+            const ok = await addInventoryProduct({
                 name: request.name,
                 reference: request.reference,
                 brand: request.brand
             });
-            saveInventory();
+            if (!ok) return alert('Não foi possível adicionar o produto à Base de Dados.');
 
             request.status = 'approved';
             request.reviewedAt = new Date().toISOString().split('T')[0];
             request.reviewedBy = getProfileLabel();
             saveProductApprovals();
 
+            inventory = await loadInventoryFromSupabase();
             renderInventory();
             if (hasActiveInventoryFilters()) applyFilters();
             renderAlerts();
@@ -2041,20 +2041,6 @@
             productApprovals = productApprovals.filter(item => item.id !== approvalId);
             saveProductApprovals();
             renderAlerts();
-        }
-
-        function loadInventory() {
-            try {
-                const stored = localStorage.getItem(INVENTORY_STORAGE_KEY);
-                if (stored) return JSON.parse(stored);
-            } catch (error) {
-                console.warn('Não foi possível carregar o inventário guardado.', error);
-            }
-            return [];
-        }
-
-        function saveInventory() {
-            localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(inventory));
         }
 
         function normalizeInventoryHeader(value) {
@@ -2121,6 +2107,12 @@
                 : `${inventory.length} produto${inventory.length !== 1 ? 's' : ''}`;
         }
 
+        async function refreshInventoryFromSupabase() {
+            inventory = await loadInventoryFromSupabase();
+            renderInventory();
+            if (hasActiveInventoryFilters()) applyFilters();
+        }
+
         function handleInventoryFileSelect(event) {
             if (!canAddProductsDirectly()) return;
 
@@ -2129,7 +2121,7 @@
             event.target.value = '';
 
             const reader = new FileReader();
-            reader.onload = function(loadEvent) {
+            reader.onload = async function(loadEvent) {
                 try {
                     if (typeof XLSX === 'undefined') {
                         alert('Biblioteca de leitura Excel não carregada. Recarregue a página e tente novamente.');
@@ -2152,12 +2144,25 @@
                             `Foram encontrados ${parsed.length} produtos no ficheiro.\n\nIsto vai substituir os ${inventory.length} produtos atuais do inventário. Continuar?`
                         );
                         if (!confirmReplace) return;
+
+                        for (const item of inventory) {
+                            if (item?.id == null) continue;
+                            const deleted = await deleteInventoryProduct(item.id);
+                            if (!deleted) {
+                                return alert('Não foi possível limpar o inventário existente no Supabase.');
+                            }
+                        }
                     }
 
-                    inventory = parsed;
-                    saveInventory();
-                    renderInventory();
-                    if (hasActiveInventoryFilters()) applyFilters();
+                    for (const product of parsed) {
+                        const added = await addInventoryProduct(product);
+                        if (!added) {
+                            await refreshInventoryFromSupabase();
+                            return alert('Erro ao importar alguns produtos para o Supabase.');
+                        }
+                    }
+
+                    await refreshInventoryFromSupabase();
                     alert(`${parsed.length} produtos importados com sucesso.`);
                 } catch (error) {
                     console.error(error);
@@ -2168,14 +2173,20 @@
             reader.readAsArrayBuffer(file);
         }
 
-        function clearInventory() {
+        async function clearInventory() {
             if (inventory.length === 0) return;
             if (!confirm('Limpar todos os produtos do inventário?')) return;
 
-            inventory = [];
-            saveInventory();
-            renderInventory();
-            if (hasActiveInventoryFilters()) applyFilters();
+            for (const item of inventory) {
+                if (item?.id == null) continue;
+                const deleted = await deleteInventoryProduct(item.id);
+                if (!deleted) {
+                    await refreshInventoryFromSupabase();
+                    return alert('Não foi possível limpar todos os produtos.');
+                }
+            }
+
+            await refreshInventoryFromSupabase();
         }
 
         function openInventoryModal(index) {
@@ -2197,9 +2208,12 @@
             document.getElementById('inventory_edit_brand').value = '';
         }
 
-        function saveInventoryItem() {
+        async function saveInventoryItem() {
             const index = document.getElementById('inventory_edit_index').value;
             if (index === '') return;
+
+            const item = inventory[Number(index)];
+            if (!item?.id) return alert('Produto inválido.');
 
             const name = document.getElementById('inventory_edit_name').value.trim();
             const reference = document.getElementById('inventory_edit_reference').value.trim();
@@ -2207,25 +2221,26 @@
 
             if (!name) return alert('Indique o nome do item.');
 
-            inventory[Number(index)] = { name, reference, brand };
-            saveInventory();
+            const ok = await updateInventoryProduct(item.id, { name, reference, brand });
+            if (!ok) return alert('Não foi possível atualizar o produto.');
+
             closeInventoryModal();
-            renderInventory();
-            if (hasActiveInventoryFilters()) applyFilters();
+            await refreshInventoryFromSupabase();
         }
 
-        function deleteInventoryItem(index) {
+        async function deleteInventoryItem(index) {
             const item = inventory[index];
             if (!item) return;
             if (!confirm(`Remover «${item.name}» do inventário?`)) return;
+            if (item.id == null) return alert('Produto inválido.');
 
-            inventory.splice(index, 1);
-            saveInventory();
-            renderInventory();
-            if (hasActiveInventoryFilters()) applyFilters();
+            const ok = await deleteInventoryProduct(item.id);
+            if (!ok) return alert('Não foi possível remover o produto.');
+
+            await refreshInventoryFromSupabase();
         }
 
-        let inventory = loadInventory();
+        let inventory = [];
         let productApprovals = loadProductApprovals();
 
         const SHOPPING_STORAGE_KEY = 'fk_procurement_shopping_v1';
@@ -4841,9 +4856,10 @@
             return Boolean(globalSearch || productFilter || referenceFilter || brandFilter);
         }
 
-        function initializeAppContent() {
+        async function initializeAppContent() {
             applyAdminOnlyVisibility();
             renderOrderLabOptions();
+            inventory = await loadInventoryFromSupabase();
             renderInventory();
             renderBudgets();
             renderPurchaseFilters();
@@ -4872,7 +4888,7 @@
                 updateSidebarUserInfo();
                 updateAddProductModalForProfile();
                 updateAlertPanelForProfile();
-                initializeAppContent();
+                await initializeAppContent();
                 return;
             }
 
@@ -4899,7 +4915,7 @@
             openModal('modalRececao');
         }
 
-        function addProductToInventoryFromModal() {
+        async function addProductToInventoryFromModal() {
             const nameEl = document.getElementById('invAdd_product_name');
             const refEl = document.getElementById('rececao_reference');
             const brandEl = document.getElementById('invAdd_brand');
@@ -4918,11 +4934,11 @@
             }
 
             if (canAddProductsDirectly()) {
-                inventory.unshift({ name, reference, brand });
-                saveInventory();
+                const ok = await addInventoryProduct({ name, reference, brand });
+                if (!ok) return alert('Não foi possível adicionar o produto.');
+
                 closeModal('modalRececao');
-                renderInventory();
-                if (hasActiveInventoryFilters()) applyFilters();
+                await refreshInventoryFromSupabase();
                 return;
             }
 
