@@ -1,4 +1,4 @@
-!DOCTYPE html>
+﻿!DOCTYPE html>
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
@@ -1168,7 +1168,6 @@
         const INVENTORY_STORAGE_KEY = 'fk_procurement_inventory';
         const PROFILE_STORAGE_KEY = 'fk_procurement_profile';
         const PRODUCT_APPROVALS_STORAGE_KEY = 'fk_procurement_product_approvals';
-        const USERS_STORAGE_KEY = 'fk_kabiorder_users';
         const SESSION_STORAGE_KEY = 'fk_kabiorder_session';
 
         const USER_PROFILES = {
@@ -1192,25 +1191,88 @@
             return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, '0')).join('');
         }
 
-        function loadUsers() {
-            try {
-                const stored = localStorage.getItem(USERS_STORAGE_KEY);
-                if (stored) return JSON.parse(stored);
-            } catch (error) {
-                console.warn('Não foi possível carregar utilizadores.', error);
-            }
-            return [];
-        }
-
-        function saveUsers(users) {
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-        }
-
-        let appUsers = loadUsers();
-
-        function findUser(username) {
+        async function findUser(username) {
             const normalized = normalizeUsername(username);
-            return appUsers.find(user => user.username === normalized) || null;
+            if (!normalized) return null;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('username', normalized)
+                    .maybeSingle();
+                if (error) {
+                    console.warn('Erro ao procurar utilizador no Supabase.', error);
+                    return null;
+                }
+                return data || null;
+            } catch (error) {
+                console.warn('Erro ao procurar utilizador no Supabase.', error);
+                return null;
+            }
+        }
+
+        async function listUsers() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .order('username', { ascending: true });
+                if (error) {
+                    console.warn('Erro ao listar utilizadores no Supabase.', error);
+                    return [];
+                }
+                return data || [];
+            } catch (error) {
+                console.warn('Erro ao listar utilizadores no Supabase.', error);
+                return [];
+            }
+        }
+
+        async function countUsers() {
+            try {
+                const { count, error } = await supabaseClient
+                    .from('users')
+                    .select('*', { count: 'exact', head: true });
+                if (error) {
+                    console.warn('Erro ao contar utilizadores no Supabase.', error);
+                    return 0;
+                }
+                return count || 0;
+            } catch (error) {
+                console.warn('Erro ao contar utilizadores no Supabase.', error);
+                return 0;
+            }
+        }
+
+        async function createUserRecord(user) {
+            const { data, error } = await supabaseClient
+                .from('users')
+                .insert([user])
+                .select('*')
+                .maybeSingle();
+            if (error) throw error;
+            return data;
+        }
+
+        async function updateUserFields(username, fields) {
+            const normalized = normalizeUsername(username);
+            const { data, error } = await supabaseClient
+                .from('users')
+                .update(fields)
+                .eq('username', normalized)
+                .select('*')
+                .maybeSingle();
+            if (error) throw error;
+            return data;
+        }
+
+        async function deleteUserRecord(username) {
+            const normalized = normalizeUsername(username);
+            const { error } = await supabaseClient
+                .from('users')
+                .delete()
+                .eq('username', normalized);
+            if (error) throw error;
         }
 
         function encodeDataUsername(username) {
@@ -1275,20 +1337,20 @@
             currentUser = null;
         }
 
-        function getCurrentUser() {
+        async function getCurrentUser() {
             if (currentUser) return currentUser;
             const session = loadSession();
             if (!session?.username) return null;
-            currentUser = findUser(session.username);
+            currentUser = await findUser(session.username);
             return currentUser;
         }
 
-        function isAdminUser(user = getCurrentUser()) {
+        function isAdminUser(user = currentUser) {
             return user?.role === 'administrador';
         }
 
         function canManageUsers() {
-            return Boolean(getCurrentUser()?.role === 'administrador');
+            return Boolean(currentUser?.role === 'administrador');
         }
 
         function applyAdminOnlyVisibility() {
@@ -1321,7 +1383,7 @@
             saveProfile(user.role);
         }
 
-        function getUserDisplayName(user = getCurrentUser()) {
+        function getUserDisplayName(user = currentUser) {
             if (!user) return 'Utilizador';
             return user.displayName || user.username;
         }
@@ -1343,7 +1405,7 @@
         }
 
         function updateSidebarUserInfo() {
-            const user = getCurrentUser();
+            const user = currentUser;
             const nameEl = document.getElementById('sidebarUserName');
 
             if (nameEl) {
@@ -1447,7 +1509,7 @@
                 if (!username) return showLoginError('Indique o nome de utilizador.');
                 if (password.length < 6) return showLoginError('A palavra-passe deve ter pelo menos 6 caracteres.');
                 if (password !== confirmPassword) return showLoginError('As palavras-passe não coincidem.');
-                if (appUsers.length > 0) return showLoginError('A configuração inicial já foi concluída.');
+                if ((await countUsers()) > 0) return showLoginError('A configuração inicial já foi concluída.');
 
                 const passwordHash = await hashPassword(password);
                 const newUser = {
@@ -1459,30 +1521,39 @@
                     createdAt: getTodayDateString(),
                     createdBy: 'setup'
                 };
-                appUsers.push(newUser);
-                saveUsers(appUsers);
-                await completeLogin(newUser);
+                try {
+                    const created = await createUserRecord(newUser);
+                    await completeLogin(created || newUser);
+                } catch (error) {
+                    console.warn('Erro ao criar administrador no Supabase.', error);
+                    return showLoginError('Não foi possível criar a conta de administrador.');
+                }
                 return;
             }
 
             if (loginMode === 'set-password') {
-                const user = findUser(pendingPasswordUsername);
+                const user = await findUser(pendingPasswordUsername);
                 if (!user) return showLoginError('Utilizador não encontrado.');
                 const accessError = ensureUserCanLogin(user);
                 if (accessError) return showLoginError(accessError);
                 if (password.length < 6) return showLoginError('A palavra-passe deve ter pelo menos 6 caracteres.');
                 if (password !== confirmPassword) return showLoginError('As palavras-passe não coincidem.');
 
-                user.passwordHash = await hashPassword(password);
-                saveUsers(appUsers);
-                await completeLogin(user);
+                try {
+                    const passwordHash = await hashPassword(password);
+                    const updated = await updateUserFields(user.username, { passwordHash });
+                    await completeLogin(updated || { ...user, passwordHash });
+                } catch (error) {
+                    console.warn('Erro ao definir palavra-passe no Supabase.', error);
+                    return showLoginError('Não foi possível guardar a palavra-passe.');
+                }
                 return;
             }
 
             if (!username) return showLoginError('Indique o nome de utilizador.');
             if (!password) return showLoginError('Indique a palavra-passe.');
 
-            const user = findUser(username);
+            const user = await findUser(username);
             if (!user) return showLoginError('Utilizador ou palavra-passe incorretos.');
             const accessError = ensureUserCanLogin(user);
             if (accessError) return showLoginError(accessError);
@@ -1511,12 +1582,13 @@
             switchTab('tab-utilizadores');
         }
 
-        function renderUserRoleSummary() {
+        async function renderUserRoleSummary(users = null) {
             const container = document.getElementById('usersRoleSummary');
             if (!container) return;
 
+            const allUsers = users || await listUsers();
             const counts = { analista: 0, manager: 0, administrador: 0 };
-            appUsers.forEach(user => {
+            allUsers.forEach(user => {
                 if (counts[user.role] !== undefined) counts[user.role] += 1;
             });
 
@@ -1528,7 +1600,7 @@
             `).join('');
         }
 
-        function renderUserManagement() {
+        async function renderUserManagement() {
             const tbody = document.getElementById('userManagementTableBody');
             const summary = document.getElementById('usersSummary');
             if (!tbody) return;
@@ -1546,8 +1618,9 @@
 
             setupUserManagementListeners();
 
+            const allUsers = await listUsers();
             const searchText = (document.getElementById('userSearch')?.value || '').trim().toLowerCase();
-            const filtered = appUsers.filter(user => {
+            const filtered = allUsers.filter(user => {
                 if (!searchText) return true;
                 const haystack = [
                     user.username,
@@ -1560,15 +1633,15 @@
             });
 
             if (summary) {
-                summary.textContent = `${appUsers.length} utilizador${appUsers.length === 1 ? '' : 'es'} registado${appUsers.length === 1 ? '' : 's'}`;
+                summary.textContent = `${allUsers.length} utilizador${allUsers.length === 1 ? '' : 'es'} registado${allUsers.length === 1 ? '' : 's'}`;
             }
-            renderUserRoleSummary();
+            await renderUserRoleSummary(allUsers);
 
             if (filtered.length === 0) {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="6" class="px-6 py-10 text-center text-sm text-slate-400">
-                            ${appUsers.length === 0
+                            ${allUsers.length === 0
                                 ? 'Ainda não existem utilizadores além da sua conta.'
                                 : 'Nenhum utilizador corresponde à pesquisa.'}
                         </td>
@@ -1577,7 +1650,7 @@
             }
 
             tbody.innerHTML = filtered.map(user => {
-                const isSelf = getCurrentUser()?.username === user.username;
+                const isSelf = currentUser?.username === user.username;
                 const encodedUsername = encodeDataUsername(user.username);
                 const currentRole = USER_PROFILES[user.role] ? user.role : 'analista';
                 const roleOptions = Object.entries(USER_PROFILES).map(([key, profile]) => `
@@ -1669,10 +1742,10 @@
             userManagementListenersAttached = true;
         }
 
-        function changeUserRoleByUsername(username, newRole, selectEl) {
+        async function changeUserRoleByUsername(username, newRole, selectEl) {
             if (!canManageUsers()) return;
 
-            const user = findUser(username);
+            const user = await findUser(username);
             if (!user) return;
 
             const validRole = USER_PROFILES[newRole] ? newRole : null;
@@ -1683,43 +1756,44 @@
 
             if (user.role === validRole) return;
 
-            const current = getCurrentUser();
-            const isSelf = current?.username === user.username;
+            const isSelf = currentUser?.username === user.username;
             if (isSelf && !confirm('Alterar o seu próprio perfil de acesso?')) {
                 if (selectEl) selectEl.value = user.role;
                 return;
             }
 
-            user.role = validRole;
-            saveUsers(appUsers);
-
-            if (isSelf) {
-                currentUser = user;
-                applyUserToProfile(user);
-                updateSidebarUserInfo();
-                updateAddProductModalForProfile();
-                updateAlertPanelForProfile();
-                renderAlerts();
-                applyAdminOnlyVisibility();
+            try {
+                const updated = await updateUserFields(username, { role: validRole });
+                if (isSelf && updated) {
+                    currentUser = updated;
+                    applyUserToProfile(updated);
+                    updateSidebarUserInfo();
+                    updateAddProductModalForProfile();
+                    updateAlertPanelForProfile();
+                    renderAlerts();
+                    applyAdminOnlyVisibility();
+                }
+                await renderUserManagement();
+            } catch (error) {
+                console.warn('Erro ao atualizar perfil no Supabase.', error);
+                if (selectEl) selectEl.value = user.role;
+                alert('Não foi possível atualizar o perfil.');
             }
-
-            renderUserManagement();
         }
 
-        function resetUserPasswordByUsername(username) {
-            const user = findUser(username);
+        async function resetUserPasswordByUsername(username) {
+            const user = await findUser(username);
             if (!user) return alert('Utilizador não encontrado.');
-            resetUserPassword(user);
+            await resetUserPassword(user);
         }
 
-        function revokeUserAccessByUsername(username) {
+        async function revokeUserAccessByUsername(username) {
             if (!canManageUsers()) return;
 
-            const user = findUser(username);
+            const user = await findUser(username);
             if (!user) return alert('Utilizador não encontrado.');
 
-            const current = getCurrentUser();
-            if (current?.username === user.username) {
+            if (currentUser?.username === user.username) {
                 return alert('Não pode revogar o acesso da sua própria conta.');
             }
 
@@ -1729,32 +1803,39 @@
                 return;
             }
 
-            user.accessRevoked = true;
-            saveUsers(appUsers);
-            renderUserManagement();
+            try {
+                await updateUserFields(username, { accessRevoked: true });
+                await renderUserManagement();
+            } catch (error) {
+                console.warn('Erro ao revogar acesso no Supabase.', error);
+                alert('Não foi possível revogar o acesso.');
+            }
         }
 
-        function restoreUserAccessByUsername(username) {
+        async function restoreUserAccessByUsername(username) {
             if (!canManageUsers()) return;
 
-            const user = findUser(username);
+            const user = await findUser(username);
             if (!user) return alert('Utilizador não encontrado.');
 
             if (!isUserAccessRevoked(user)) return;
 
-            user.accessRevoked = false;
-            saveUsers(appUsers);
-            renderUserManagement();
+            try {
+                await updateUserFields(username, { accessRevoked: false });
+                await renderUserManagement();
+            } catch (error) {
+                console.warn('Erro ao restaurar acesso no Supabase.', error);
+                alert('Não foi possível restaurar o acesso.');
+            }
         }
 
-        function removeUserAccountByUsername(username) {
+        async function removeUserAccountByUsername(username) {
             if (!canManageUsers()) return;
 
-            const user = findUser(username);
+            const user = await findUser(username);
             if (!user) return alert('Utilizador não encontrado.');
 
-            const current = getCurrentUser();
-            if (current?.username === user.username) {
+            if (currentUser?.username === user.username) {
                 return alert('Não pode remover a sua própria conta.');
             }
 
@@ -1762,29 +1843,31 @@
                 return;
             }
 
-            appUsers = appUsers.filter(item => item.username !== user.username);
-            saveUsers(appUsers);
-            renderUserManagement();
+            try {
+                await deleteUserRecord(username);
+                await renderUserManagement();
+            } catch (error) {
+                console.warn('Erro ao remover utilizador no Supabase.', error);
+                alert('Não foi possível remover o utilizador.');
+            }
         }
 
-        function changeUserRole(index, newRole) {
-            const user = appUsers[index];
-            if (!user) return;
-            changeUserRoleByUsername(user.username, newRole);
-        }
-
-        function resetUserPassword(user) {
+        async function resetUserPassword(user) {
             if (!canManageUsers()) return;
             if (!user) return;
 
             if (!confirm(`Repor a palavra-passe de "${user.username}"? Terá de definir uma nova no próximo acesso.`)) return;
 
-            user.passwordHash = null;
-            saveUsers(appUsers);
-            renderUserManagement();
+            try {
+                await updateUserFields(user.username, { passwordHash: null });
+                await renderUserManagement();
+            } catch (error) {
+                console.warn('Erro ao repor palavra-passe no Supabase.', error);
+                alert('Não foi possível repor a palavra-passe.');
+            }
         }
 
-        function addUserFromAdmin() {
+        async function addUserFromAdmin() {
             if (!canManageUsers()) return alert('Apenas administradores podem adicionar utilizadores.');
 
             const username = normalizeUsername(document.getElementById('newUserUsername')?.value);
@@ -1792,22 +1875,26 @@
 
             if (!username) return alert('Indique o nome de utilizador.');
             if (!USER_PROFILES[role]) return alert('Perfil inválido.');
-            if (findUser(username)) return alert('Esse utilizador já existe.');
+            if (await findUser(username)) return alert('Esse utilizador já existe.');
 
-            appUsers.push({
-                username,
-                displayName: username,
-                role,
-                passwordHash: null,
-                accessRevoked: false,
-                createdAt: getTodayDateString(),
-                createdBy: getCurrentUser()?.username || 'admin'
-            });
-            saveUsers(appUsers);
+            try {
+                await createUserRecord({
+                    username,
+                    displayName: username,
+                    role,
+                    passwordHash: null,
+                    accessRevoked: false,
+                    createdAt: getTodayDateString(),
+                    createdBy: currentUser?.username || 'admin'
+                });
 
-            document.getElementById('newUserUsername').value = '';
-            document.getElementById('newUserRole').value = 'analista';
-            renderUserManagement();
+                document.getElementById('newUserUsername').value = '';
+                document.getElementById('newUserRole').value = 'analista';
+                await renderUserManagement();
+            } catch (error) {
+                console.warn('Erro ao criar utilizador no Supabase.', error);
+                alert('Não foi possível criar o utilizador.');
+            }
         }
 
         function loadProfile() {
@@ -1825,9 +1912,8 @@
         }
 
         function applySavedProfile() {
-            const user = getCurrentUser();
-            if (user) {
-                applyUserToProfile(user);
+            if (currentUser) {
+                applyUserToProfile(currentUser);
             } else {
                 currentProfile = loadProfile();
             }
@@ -4766,9 +4852,7 @@
             setActiveSidebarButton('tab-inventario');
         }
 
-        window.onload = function() {
-            appUsers = loadUsers();
-
+        window.onload = async function() {
             document.getElementById('loginPassword')?.addEventListener('keydown', event => {
                 if (event.key === 'Enter') handleLoginSubmit();
             });
@@ -4779,7 +4863,7 @@
                 if (event.key === 'Enter') handleLoginSubmit();
             });
 
-            const sessionUser = getCurrentUser();
+            const sessionUser = await getCurrentUser();
             if (sessionUser && sessionUser.passwordHash) {
                 applyUserToProfile(sessionUser);
                 hideLoginScreen();
@@ -4790,7 +4874,7 @@
                 return;
             }
 
-            if (appUsers.length === 0) {
+            if ((await countUsers()) === 0) {
                 showLoginScreen('setup-admin');
                 return;
             }
@@ -4848,6 +4932,8 @@
         }
 
     </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 </body>
 </html>
 </user_query>
