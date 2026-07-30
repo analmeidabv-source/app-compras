@@ -2154,12 +2154,14 @@
                         }
                     }
 
-                    for (const product of parsed) {
-                        const added = await addInventoryProduct(product);
-                        if (!added) {
-                            await refreshInventoryFromSupabase();
-                            return alert('Erro ao importar alguns produtos para o Supabase.');
-                        }
+                    const { error: insertError } = await supabaseClient
+                        .from("inventory")
+                        .insert(parsed);
+
+                    if (insertError) {
+                        console.error("Erro ao importar inventário:", insertError);
+                        await refreshInventoryFromSupabase();
+                        return alert('Erro ao importar produtos para o Supabase.');
                     }
 
                     await refreshInventoryFromSupabase();
