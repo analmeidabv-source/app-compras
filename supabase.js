@@ -1,9 +1,7 @@
-// Configuração do Supabase
-const SUPABASE_URL = "https://botdobqiroytelonuvym.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_2fF1l8eN1bQfXwIqUxPFeg_pWNJgwiX";
+const SUPABASE_URL = "...";
+const SUPABASE_ANON_KEY = "...";
 
-// Criar o cliente
-const supabase = window.supabase.createClient(
+const supabaseClient = window.supabase.createClient(
     SUPABASE_URL,
     SUPABASE_ANON_KEY
 );
