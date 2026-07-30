@@ -1,4 +1,4 @@
-﻿!DOCTYPE html>
+!DOCTYPE html>
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
@@ -1250,8 +1250,10 @@
                 .insert([user])
                 .select('*')
                 .maybeSingle();
-            if (error) throw error;
-            return data;
+                if (error) {
+    console.error("Erro createUserRecord:", error);
+    throw error;
+}
         }
 
         async function updateUserFields(username, fields) {
@@ -4934,6 +4936,7 @@
     </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
+<script src="inventory.js"></script>
 </body>
 </html>
 </user_query>
