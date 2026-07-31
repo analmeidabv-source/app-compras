@@ -3526,11 +3526,27 @@
             openModal('modalComment');
         }
 
-        function saveComment() {
+        async function saveComment() {
             const index = document.getElementById('comment_index').value;
             const comment = document.getElementById('comment_text').value.trim();
             if (index === "") return;
+
+            const item = shoppingList[index];
+            if (!item?.id) return;
+
             shoppingList[index].comment = comment;
+
+            const { error } = await supabaseClient
+                .from("shopping_list")
+                .update({ comment })
+                .eq("id", item.id);
+
+            if (error) {
+                console.error("Erro ao guardar comentário:", error);
+                return alert("Erro ao guardar o comentário no Supabase.");
+            }
+
+            shoppingList = await loadShoppingList();
             renderShopping();
             closeModal('modalComment');
         }
