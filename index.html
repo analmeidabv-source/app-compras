@@ -3292,7 +3292,7 @@
             }
         }
 
-        function alterarStatusPedido(index, novoStatus) {
+        async function alterarStatusPedido(index, novoStatus) {
             const previousStatus = shoppingList[index].status;
             shoppingList[index].status = novoStatus;
 
@@ -3300,6 +3300,28 @@
                 shoppingList[index].receivedBy = getProfileLabel();
                 shoppingList[index].receivedAt = getTodayDateString();
             }
+
+            const item = shoppingList[index];
+            if (!item?.id) return;
+
+            const updates = { status: item.status };
+            if (novoStatus === 'Em Laboratório' && previousStatus === 'Compra Feita') {
+                updates.receivedBy = item.receivedBy;
+                updates.receivedAt = item.receivedAt;
+            }
+
+            const { error } = await supabaseClient
+                .from("shopping_list")
+                .update(updates)
+                .eq("id", item.id);
+
+            if (error) {
+                console.error("Erro ao atualizar estado do pedido:", error);
+                return alert("Erro ao atualizar o estado no Supabase.");
+            }
+
+            shoppingList = await loadShoppingList();
+            renderShopping();
         }
 
         function openPurchaseCostModal(index) {
