@@ -3477,6 +3477,39 @@
                 if (canViewManagerAlerts()) {
                     shoppingList[index].cartNumber = (document.getElementById('req_cart_number')?.value || '').trim();
                 }
+
+                const item = shoppingList[index];
+                if (!item?.id) return alert("Pedido inválido.");
+
+                const updates = {
+                    name,
+                    brand,
+                    catalog,
+                    lab,
+                    purpose,
+                    category,
+                    qty,
+                    requester: "Analista: " + user,
+                    urgent: isUrgent
+                };
+                if (canViewManagerAlerts()) {
+                    updates.cart_number = shoppingList[index].cartNumber;
+                }
+
+                const { error: updateError } = await supabaseClient
+                    .from("shopping_list")
+                    .update(updates)
+                    .eq("id", item.id);
+
+                if (updateError) {
+                    console.error("Erro ao atualizar pedido:", updateError);
+                    return alert("Erro ao atualizar o pedido no Supabase.");
+                }
+
+                shoppingList = await loadShoppingList();
+                renderShopping();
+                closeModal('modalPedido');
+                return;
             } else {
                 console.log('fazerPedido: antes do insert');
                 const { error: insertError } = await supabaseClient
