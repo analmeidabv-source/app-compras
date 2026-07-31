@@ -2247,21 +2247,25 @@
 
         const SHOPPING_STORAGE_KEY = 'fk_procurement_shopping_v1';
 
-        function loadShoppingList() {
-            try {
-                const stored = localStorage.getItem(SHOPPING_STORAGE_KEY);
-                if (stored) return JSON.parse(stored);
-            } catch (error) {
-                console.warn('Não foi possível carregar os pedidos guardados.', error);
+        async function loadShoppingList() {
+            const { data, error } = await supabaseClient
+                .from("shopping_list")
+                .select("*")
+                .order("date", { ascending: false });
+
+            if (error) {
+                console.error("Erro ao carregar pedidos:", error);
+                return [];
             }
-            return [];
+
+            return data || [];
         }
 
         function saveShoppingList() {
             localStorage.setItem(SHOPPING_STORAGE_KEY, JSON.stringify(shoppingList));
         }
 
-        let shoppingList = loadShoppingList();
+        let shoppingList = [];
 
         const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
@@ -3420,7 +3424,7 @@
             closeModal('modalCompraDetalhes');
         }
 
-        function fazerPedido() {
+        async function fazerPedido() {
             const name = document.getElementById('req_name').value.trim();
             const brand = document.getElementById('req_brand').value.trim();
             const catalog = document.getElementById('req_catalog').value.trim();
@@ -3436,6 +3440,8 @@
 
             const lab = labs.join(', ');
 
+            console.log('fazerPedido: antes do if index', { index });
+
             if (index !== "") {
                 shoppingList[index].name = name;
                 shoppingList[index].brand = brand;
@@ -3450,21 +3456,42 @@
                     shoppingList[index].cartNumber = (document.getElementById('req_cart_number')?.value || '').trim();
                 }
             } else {
-                shoppingList.unshift({
-                    date: new Date().toISOString().split('T')[0],
-                    name,
-                    brand,
-                    catalog,
-                    lab,
-                    purpose,
-                    category,
-                    qty,
-                    requester: "Analista: " + user,
-                    urgent: isUrgent,
-                    status: "Pendente",
-                    comment: "",
-                    cartNumber: ""
-                });
+                console.log('fazerPedido: antes do insert');
+                const { error: insertError } = await supabaseClient
+                    .from("shopping_list")
+                    .insert([{
+                        date: new Date().toISOString().split('T')[0],
+                        name,
+                        brand,
+                        catalog,
+                        lab,
+                        purpose,
+                        category,
+                        qty,
+                        requester: "Analista: " + user,
+                        urgent: isUrgent,
+                        status: "Pendente",
+                        comment: "",
+                        cart_number: ""
+                    }]);
+                console.log('fazerPedido: depois do insert', { insertError });
+
+                if (insertError) {
+                    console.error("Erro ao criar pedido:", insertError);
+                    return alert("Erro ao criar o pedido no Supabase.");
+                }
+
+                const { data, error: loadError } = await supabaseClient
+                    .from("shopping_list")
+                    .select("*")
+                    .order("date", { ascending: false });
+
+                if (loadError) {
+                    console.error("Erro ao recarregar pedidos:", loadError);
+                    return alert("Pedido criado, mas falhou o recarregamento da lista.");
+                }
+
+                shoppingList = data || [];
             }
 
             renderShopping();
@@ -4865,6 +4892,7 @@
             renderInventory();
             renderBudgets();
             renderPurchaseFilters();
+            shoppingList = await loadShoppingList();
             renderShopping();
             renderUsageStats();
             renderAlerts();
