@@ -3,17 +3,31 @@
 // ===============================
 
 async function loadInventoryFromSupabase() {
-    const { data, error } = await supabaseClient
-        .from("inventory")
-        .select("*")
-        .order("name");
+    const pageSize = 1000;
+    const all = [];
+    let from = 0;
 
-    if (error) {
-        console.error("Erro ao carregar inventário:", error);
-        return [];
+    while (true) {
+        const to = from + pageSize - 1;
+        const { data, error } = await supabaseClient
+            .from("inventory")
+            .select("*")
+            .order("name")
+            .range(from, to);
+
+        if (error) {
+            console.error("Erro ao carregar inventário:", error);
+            return all;
+        }
+
+        const rows = data || [];
+        all.push(...rows);
+
+        if (rows.length < pageSize) break;
+        from += pageSize;
     }
 
-    return data || [];
+    return all;
 }
 
 async function addInventoryProduct(product) {
