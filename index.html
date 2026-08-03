@@ -2356,8 +2356,31 @@
             return budget;
         }
 
-        function saveBudgetData() {
-            localStorage.setItem(BUDGET_STORAGE_KEY, JSON.stringify(budgetData));
+        async function saveBudgetData() {
+            const rows = [];
+            budgetData.forEach(monthData => {
+                (monthData.categories || []).forEach(category => {
+                    (category.items || []).forEach(item => {
+                        rows.push({
+                            month: monthData.month,
+                            category: category.label,
+                            cost_center: item.label,
+                            total: item.total ?? 0,
+                            spent: item.spent ?? 0
+                        });
+                    });
+                });
+            });
+
+            if (!rows.length) return;
+
+            const { error } = await supabaseClient
+                .from("budgets")
+                .upsert(rows, { onConflict: 'month,category,cost_center' });
+
+            if (error) {
+                console.error("Erro ao guardar budgets:", error);
+            }
         }
 
         let budgetData = [];
@@ -2610,7 +2633,7 @@
             input.value = formatCurrency(getAnnualBudgetTotal());
         }
 
-        function updateAnnualBudgetTotal(rawValue) {
+        async function updateAnnualBudgetTotal(rawValue) {
             const parsed = parseFloat(String(rawValue).replace(/[^0-9.-]/g, ''));
             if (!Number.isFinite(parsed) || parsed < 0) return;
 
@@ -2633,7 +2656,7 @@
                 if (firstItem) firstItem.total += diff;
             }
 
-            saveBudgetData();
+            await saveBudgetData();
             renderBudgets();
             renderAlerts();
         }
@@ -2695,7 +2718,7 @@
             `;
         }
 
-        function updateCategoryBudgetTotal(monthIndex, categoryLabel, rawValue) {
+        async function updateCategoryBudgetTotal(monthIndex, categoryLabel, rawValue) {
             const monthData = budgetData[monthIndex];
             if (!monthData) return;
 
@@ -2719,12 +2742,12 @@
                 if (diff !== 0) items[0].total += diff;
             }
 
-            saveBudgetData();
+            await saveBudgetData();
             renderBudgetMonthContent();
             renderAlerts();
         }
 
-        function updateBudgetValue(monthIndex, itemLabel, field, rawValue) {
+        async function updateBudgetValue(monthIndex, itemLabel, field, rawValue) {
             const monthData = budgetData[monthIndex];
             if (!monthData) return;
 
@@ -2752,7 +2775,7 @@
 
             updateBudgetMonthSummary(monthIndex);
             updateBudgetAnnualSummary();
-            saveBudgetData();
+            await saveBudgetData();
             renderAlerts();
         }
 
@@ -3535,7 +3558,7 @@
 
             activeBudgetCategory = categoryLabel;
             activeBudgetMonth = monthIndex;
-            saveBudgetData();
+            await saveBudgetData();
             shoppingList = await loadShoppingList();
             renderShopping();
             renderBudgets();
