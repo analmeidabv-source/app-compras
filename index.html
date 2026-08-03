@@ -3441,7 +3441,7 @@
                 purchaseCost: item.purchaseCost
             };
 
-            console.log("updates", updates);
+            console.log("updates", JSON.stringify(updates, null, 2));
             const { error: updateError } = await supabaseClient
                 .from("shopping_list")
                 .update(updates)
