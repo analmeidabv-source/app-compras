@@ -2385,54 +2385,6 @@
 
         let budgetData = [];
 
-        async function migrateBudgetsToSupabase() {
-            const { data: existing, error: checkError } = await supabaseClient
-                .from("budgets")
-                .select("id")
-                .limit(1);
-
-            if (checkError) {
-                console.error("Erro ao verificar budgets:", checkError);
-                return;
-            }
-
-            if (existing && existing.length > 0) {
-                console.log("migrateBudgetsToSupabase: tabela budgets já tem dados — nada a fazer.");
-                return;
-            }
-
-            const rows = [];
-            budgetData.forEach(monthData => {
-                (monthData.categories || []).forEach(category => {
-                    (category.items || []).forEach(item => {
-                        rows.push({
-                            month: monthData.month,
-                            category: category.label,
-                            cost_center: item.label,
-                            total: item.total ?? 0,
-                            spent: item.spent ?? 0
-                        });
-                    });
-                });
-            });
-
-            if (!rows.length) {
-                console.log("migrateBudgetsToSupabase: budgetData sem linhas para inserir.");
-                return;
-            }
-
-            const { error: insertError } = await supabaseClient
-                .from("budgets")
-                .insert(rows);
-
-            if (insertError) {
-                console.error("Erro ao migrar budgets:", insertError);
-                return;
-            }
-
-            console.log(`migrateBudgetsToSupabase: inseridos ${rows.length} registos.`);
-        }
-
         let activeBudgetMonth = 0;
         let activeBudgetCategory = "Padrões";
 
