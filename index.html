@@ -2258,7 +2258,10 @@
                 return [];
             }
 
-            return data || [];
+            return (data || []).map(item => ({
+                ...item,
+                cartNumber: item.cart_number
+            }));
         }
 
         function saveShoppingList() {
