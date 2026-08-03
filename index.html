@@ -3478,13 +3478,11 @@
                 purchaseCost: item.purchaseCost
             };
 
-            console.log("updates", JSON.stringify(updates, null, 2));
             const { error: updateError } = await supabaseClient
                 .from("shopping_list")
                 .update(updates)
                 .eq("id", item.id);
 
-            console.log("updateError", JSON.stringify(updateError, null, 2));
             if (updateError) {
                 console.error("Erro ao registar compra:", updateError);
                 return alert("Erro ao registar a compra no Supabase.");
@@ -3524,8 +3522,6 @@
             if (!name || !qty || !brand || !catalog || labs.length === 0) return alert("Preencha os campos obrigatórios.");
 
             const lab = labs.join(', ');
-
-            console.log('fazerPedido: antes do if index', { index });
 
             if (index !== "") {
                 shoppingList[index].name = name;
@@ -3574,7 +3570,6 @@
                 closeModal('modalPedido');
                 return;
             } else {
-                console.log('fazerPedido: antes do insert');
                 const { error: insertError } = await supabaseClient
                     .from("shopping_list")
                     .insert([{
@@ -3592,7 +3587,6 @@
                         comment: "",
                         cart_number: ""
                     }]);
-                console.log('fazerPedido: depois do insert', { insertError });
 
                 if (insertError) {
                     console.error("Erro ao criar pedido:", insertError);
