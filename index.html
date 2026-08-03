@@ -3444,6 +3444,7 @@
                 })
                 .eq("id", item.id);
 
+            console.log({ updateError });
             if (updateError) {
                 console.error("Erro ao registar compra:", updateError);
                 return alert("Erro ao registar a compra no Supabase.");
