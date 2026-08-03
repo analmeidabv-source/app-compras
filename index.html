@@ -2327,21 +2327,40 @@
             }));
         }
 
-        function loadBudgetData() {
-            try {
-                const stored = localStorage.getItem(BUDGET_STORAGE_KEY);
-                if (stored) return JSON.parse(stored);
-            } catch (error) {
-                console.warn('Não foi possível carregar o budget guardado.', error);
+        async function loadBudgetData() {
+            const budget = createDefaultBudgetData();
+
+            const { data, error } = await supabaseClient
+                .from("budgets")
+                .select("*");
+
+            if (error) {
+                console.error("Erro ao carregar budgets:", error);
+                return budget;
             }
-            return createDefaultBudgetData();
+
+            (data || []).forEach(row => {
+                const monthData = budget.find(m => m.month === row.month);
+                if (!monthData) return;
+
+                const category = monthData.categories.find(c => c.label === row.category);
+                if (!category) return;
+
+                const item = category.items.find(i => i.label === row.cost_center);
+                if (!item) return;
+
+                item.total = Number(row.total) || 0;
+                item.spent = Number(row.spent) || 0;
+            });
+
+            return budget;
         }
 
         function saveBudgetData() {
             localStorage.setItem(BUDGET_STORAGE_KEY, JSON.stringify(budgetData));
         }
 
-        let budgetData = loadBudgetData();
+        let budgetData = [];
 
         async function migrateBudgetsToSupabase() {
             const { data: existing, error: checkError } = await supabaseClient
@@ -5038,6 +5057,7 @@
             renderOrderLabOptions();
             inventory = await loadInventoryFromSupabase();
             renderInventory();
+            budgetData = await loadBudgetData();
             renderBudgets();
             renderPurchaseFilters();
             shoppingList = await loadShoppingList();
