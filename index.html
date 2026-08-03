@@ -3380,7 +3380,7 @@
             }
         }
 
-        function confirmarCompraDetalhes() {
+        async function confirmarCompraDetalhes() {
             const index = document.getElementById('purchaseCostIndex').value;
             if (index === "") return;
 
@@ -3428,6 +3428,27 @@
                 allocations: rows
             };
 
+            const item = shoppingList[index];
+            if (!item?.id) return alert("Pedido inválido.");
+
+            const { error: updateError } = await supabaseClient
+                .from("shopping_list")
+                .update({
+                    status: item.status,
+                    purchaseDate: item.purchaseDate,
+                    purchasedBy: item.purchasedBy,
+                    cart_number: item.cartNumber,
+                    purchaseCategory: item.purchaseCategory,
+                    category: item.category,
+                    purchaseCost: item.purchaseCost
+                })
+                .eq("id", item.id);
+
+            if (updateError) {
+                console.error("Erro ao registar compra:", updateError);
+                return alert("Erro ao registar a compra no Supabase.");
+            }
+
             const monthData = budgetData[monthIndex];
             const categoryData = monthData?.categories.find(item => item.label === categoryLabel);
 
@@ -3441,6 +3462,7 @@
             activeBudgetCategory = categoryLabel;
             activeBudgetMonth = monthIndex;
             saveBudgetData();
+            shoppingList = await loadShoppingList();
             renderShopping();
             renderBudgets();
             closeModal('modalCompraDetalhes');
