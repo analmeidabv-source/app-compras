@@ -2245,8 +2245,6 @@
         let inventory = [];
         let productApprovals = loadProductApprovals();
 
-        const SHOPPING_STORAGE_KEY = 'fk_procurement_shopping_v1';
-
         async function loadShoppingList() {
             const { data, error } = await supabaseClient
                 .from("shopping_list")
