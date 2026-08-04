@@ -2592,7 +2592,7 @@
             }
         }
 
-        let alerts = loadAlerts();
+        let alerts = [];
 
         async function migrateAlertsToSupabase() {
             const { data: existing, error: checkError } = await supabaseClient
@@ -5186,6 +5186,7 @@
             renderShopping();
             renderUsageStats();
             productApprovals = await loadProductApprovals();
+            alerts = await loadAlerts();
             renderAlerts();
             updateHeaderActionButtons('tab-inventario');
             setActiveSidebarButton('tab-inventario');
