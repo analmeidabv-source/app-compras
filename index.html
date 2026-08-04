@@ -1923,14 +1923,28 @@
             updateAlertPanelForProfile();
         }
 
-        function loadProductApprovals() {
-            try {
-                const stored = localStorage.getItem(PRODUCT_APPROVALS_STORAGE_KEY);
-                if (stored) return JSON.parse(stored);
-            } catch (error) {
-                console.warn('Não foi possível carregar pedidos de aprovação.', error);
+        async function loadProductApprovals() {
+            const { data, error } = await supabaseClient
+                .from("product_approvals")
+                .select("*")
+                .order("requestedAt", { ascending: false });
+
+            if (error) {
+                console.error("Erro ao carregar product_approvals:", error);
+                return [];
             }
-            return [];
+
+            return (data || []).map(item => ({
+                id: item.id,
+                name: item.name,
+                reference: item.reference,
+                brand: item.brand,
+                requestedBy: item.requestedBy,
+                requestedAt: item.requestedAt,
+                status: item.status,
+                reviewedAt: item.reviewedAt,
+                reviewedBy: item.reviewedBy
+            }));
         }
 
         function saveProductApprovals() {
