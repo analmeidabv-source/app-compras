@@ -2554,6 +2554,48 @@
 
         let alerts = loadAlerts();
 
+        async function migrateAlertsToSupabase() {
+            const { data: existing, error: checkError } = await supabaseClient
+                .from("alerts")
+                .select("id")
+                .limit(1);
+
+            if (checkError) {
+                console.error("Erro ao verificar alerts:", checkError);
+                return;
+            }
+
+            if (existing && existing.length > 0) {
+                console.log("migrateAlertsToSupabase: tabela já tem dados — nada a fazer.");
+                return;
+            }
+
+            if (!alerts.length) {
+                console.log("migrateAlertsToSupabase: alerts vazio — nada a inserir.");
+                return;
+            }
+
+            const rows = alerts.map(item => ({
+                id: item.id,
+                type: item.type,
+                title: item.title,
+                message: item.message ?? null,
+                scheduled_date: item.scheduledDate ?? null,
+                status: item.status
+            }));
+
+            const { error: insertError } = await supabaseClient
+                .from("alerts")
+                .insert(rows);
+
+            if (insertError) {
+                console.error("Erro ao migrar alerts:", insertError);
+                return;
+            }
+
+            console.log(`migrateAlertsToSupabase: inseridos ${rows.length} registos.`);
+        }
+
         const ALERT_STALE_DAYS = 30;
         const ALERT_INACTIVE_PRODUCT_MONTHS = 18;
         const BUDGET_WARNING_PERCENT = 70;
