@@ -1947,8 +1947,28 @@
             }));
         }
 
-        function saveProductApprovals() {
-            localStorage.setItem(PRODUCT_APPROVALS_STORAGE_KEY, JSON.stringify(productApprovals));
+        async function saveProductApprovals() {
+            if (!productApprovals.length) return;
+
+            const rows = productApprovals.map(item => ({
+                id: item.id,
+                name: item.name,
+                reference: item.reference ?? null,
+                brand: item.brand ?? null,
+                requestedBy: item.requestedBy,
+                requestedAt: item.requestedAt,
+                status: item.status,
+                reviewedAt: item.reviewedAt ?? null,
+                reviewedBy: item.reviewedBy ?? null
+            }));
+
+            const { error } = await supabaseClient
+                .from("product_approvals")
+                .upsert(rows, { onConflict: 'id' });
+
+            if (error) {
+                console.error("Erro ao guardar product_approvals:", error);
+            }
         }
 
         function updateAlertPanelForProfile() {
@@ -1991,7 +2011,7 @@
             return `pa-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         }
 
-        function submitProductForApproval({ name, reference, brand, requestedBy }) {
+        async function submitProductForApproval({ name, reference, brand, requestedBy }) {
             productApprovals.unshift({
                 id: getNextProductApprovalId(),
                 name,
@@ -2001,7 +2021,7 @@
                 requestedAt: new Date().toISOString().split('T')[0],
                 status: 'pending'
             });
-            saveProductApprovals();
+            await saveProductApprovals();
             renderAlerts();
         }
 
@@ -2025,7 +2045,7 @@
             request.status = 'approved';
             request.reviewedAt = new Date().toISOString().split('T')[0];
             request.reviewedBy = getProfileLabel();
-            saveProductApprovals();
+            await saveProductApprovals();
 
             inventory = await loadInventoryFromSupabase();
             renderInventory();
@@ -2033,7 +2053,7 @@
             renderAlerts();
         }
 
-        function rejectProductApproval(approvalId) {
+        async function rejectProductApproval(approvalId) {
             if (!canApproveProducts()) return;
 
             const request = productApprovals.find(item => item.id === approvalId && item.status === 'pending');
@@ -2042,18 +2062,18 @@
             request.status = 'rejected';
             request.reviewedAt = new Date().toISOString().split('T')[0];
             request.reviewedBy = getProfileLabel();
-            saveProductApprovals();
+            await saveProductApprovals();
             renderAlerts();
         }
 
-        function removeProductApprovalNotification(approvalId) {
+        async function removeProductApprovalNotification(approvalId) {
             if (!canApproveProducts()) return;
 
             const request = productApprovals.find(item => item.id === approvalId);
             if (!request || (request.status !== 'approved' && request.status !== 'rejected')) return;
 
             productApprovals = productApprovals.filter(item => item.id !== approvalId);
-            saveProductApprovals();
+            await saveProductApprovals();
             renderAlerts();
         }
 
