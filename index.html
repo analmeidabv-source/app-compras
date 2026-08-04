@@ -2245,6 +2245,51 @@
         let inventory = [];
         let productApprovals = loadProductApprovals();
 
+        async function migrateProductApprovalsToSupabase() {
+            const { data: existing, error: checkError } = await supabaseClient
+                .from("product_approvals")
+                .select("id")
+                .limit(1);
+
+            if (checkError) {
+                console.error("Erro ao verificar product_approvals:", checkError);
+                return;
+            }
+
+            if (existing && existing.length > 0) {
+                console.log("migrateProductApprovalsToSupabase: tabela já tem dados — nada a fazer.");
+                return;
+            }
+
+            if (!productApprovals.length) {
+                console.log("migrateProductApprovalsToSupabase: productApprovals vazio — nada a inserir.");
+                return;
+            }
+
+            const rows = productApprovals.map(item => ({
+                id: item.id,
+                name: item.name,
+                reference: item.reference ?? null,
+                brand: item.brand ?? null,
+                requestedBy: item.requestedBy,
+                requestedAt: item.requestedAt,
+                status: item.status,
+                reviewedAt: item.reviewedAt ?? null,
+                reviewedBy: item.reviewedBy ?? null
+            }));
+
+            const { error: insertError } = await supabaseClient
+                .from("product_approvals")
+                .insert(rows);
+
+            if (insertError) {
+                console.error("Erro ao migrar product_approvals:", insertError);
+                return;
+            }
+
+            console.log(`migrateProductApprovalsToSupabase: inseridos ${rows.length} registos.`);
+        }
+
         async function loadShoppingList() {
             const { data, error } = await supabaseClient
                 .from("shopping_list")
