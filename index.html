@@ -642,6 +642,69 @@
                                 <option value="administrador">Administrador</option>
                             </select>
                         </div>
+                        <div id="user_units_container">
+                            <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Unidades atribuídas</label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="U2">
+                                <span class="text-xs text-slate-700">U2</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="U3">
+                                <span class="text-xs text-slate-700">U3</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="U4">
+                                <span class="text-xs text-slate-700">U4</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="U5">
+                                <span class="text-xs text-slate-700">U5</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="Estabilidades U2">
+                                <span class="text-xs text-slate-700">Estabilidades U2</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="Estabilidades U3">
+                                <span class="text-xs text-slate-700">Estabilidades U3</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="Estabilidades U4">
+                                <span class="text-xs text-slate-700">Estabilidades U4</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="Estabilidades U5">
+                                <span class="text-xs text-slate-700">Estabilidades U5</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="VMA-U3">
+                                <span class="text-xs text-slate-700">VMA-U3</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="VMA-U4">
+                                <span class="text-xs text-slate-700">VMA-U4</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="VMA-U5">
+                                <span class="text-xs text-slate-700">VMA-U5</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="Microbiologia">
+                                <span class="text-xs text-slate-700">Microbiologia</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="Projetos-FIPS">
+                                <span class="text-xs text-slate-700">Projetos-FIPS</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="U2-Sugammadex">
+                                <span class="text-xs text-slate-700">U2-Sugammadex</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-1 py-1">
+                                <input type="checkbox" value="VMA-Sugammadex">
+                                <span class="text-xs text-slate-700">VMA-Sugammadex</span>
+                            </label>
+                        </div>
                         <button onclick="addUserFromAdmin()" class="w-full rounded-lg bg-[#8B7EC8] py-2.5 text-sm font-medium text-white hover:bg-[#7A6BB0] transition">
                             Adicionar Utilizador
                         </button>
@@ -1076,6 +1139,89 @@
                         <option value="urgent">Urgente</option>
                     </select>
                 </div>
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-slate-400">Visibilidade</label>
+                    <select id="alert_visibility" onchange="updateAlertVisibilityUnits()" class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-200 bg-white">
+                        <option value="all">Todos os utilizadores</option>
+                        <option value="me">Apenas para mim</option>
+                        <option value="units">Unidades específicas</option>
+                    </select>
+                </div>
+                <div id="alert_visibility_units_container" style="display:none;">
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="U2">
+                        <span class="text-xs text-slate-700">U2</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="U3">
+                        <span class="text-xs text-slate-700">U3</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="U4">
+                        <span class="text-xs text-slate-700">U4</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="U5">
+                        <span class="text-xs text-slate-700">U5</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="Estabilidades U2">
+                        <span class="text-xs text-slate-700">Estabilidades U2</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="Estabilidades U3">
+                        <span class="text-xs text-slate-700">Estabilidades U3</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="Estabilidades U4">
+                        <span class="text-xs text-slate-700">Estabilidades U4</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="Estabilidades U5">
+                        <span class="text-xs text-slate-700">Estabilidades U5</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="VMA-U3">
+                        <span class="text-xs text-slate-700">VMA-U3</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="VMA-U4">
+                        <span class="text-xs text-slate-700">VMA-U4</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="VMA-U5">
+                        <span class="text-xs text-slate-700">VMA-U5</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="Microbiologia">
+                        <span class="text-xs text-slate-700">Microbiologia</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="Projetos-FIPS">
+                        <span class="text-xs text-slate-700">Projetos-FIPS</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="U2-Sugammadex">
+                        <span class="text-xs text-slate-700">U2-Sugammadex</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="VMA-Sugammadex">
+                        <span class="text-xs text-slate-700">VMA-Sugammadex</span>
+                    </label>
+                    <label class="text-[10px] font-bold uppercase text-slate-400 block mt-3 mb-1 px-1">Perfis</label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="administrator">
+                        <span class="text-xs text-slate-700">Administrador</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="manager">
+                        <span class="text-xs text-slate-700">Manager</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-1 py-1">
+                        <input type="checkbox" value="analyst">
+                        <span class="text-xs text-slate-700">Analista</span>
+                    </label>
+                </div>
             </div>
 
             <div class="px-6 py-4 border-t border-slate-100 flex gap-2">
@@ -1190,6 +1336,35 @@
             return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, '0')).join('');
         }
 
+        function normalizeAssignedUnits(value) {
+            if (Array.isArray(value)) return value.map(String).filter(Boolean);
+            if (value == null || value === '') return [];
+            return String(value).split(',').map(v => v.trim()).filter(Boolean);
+        }
+
+        function mapUserRecord(user) {
+            if (!user) return null;
+            const assignedUnits = normalizeAssignedUnits(user.assigned_units ?? user.assignedUnits);
+            return {
+                ...user,
+                assignedUnits,
+                assigned_units: assignedUnits
+            };
+        }
+
+        function getSelectedUserUnits() {
+            return [...document.querySelectorAll('#user_units_container input[type="checkbox"]:checked')]
+                .map(checkbox => checkbox.value)
+                .filter(Boolean);
+        }
+
+        function setSelectedUserUnits(units) {
+            const selected = new Set(normalizeAssignedUnits(units));
+            document.querySelectorAll('#user_units_container input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = selected.has(checkbox.value);
+            });
+        }
+
         async function findUser(username) {
             const normalized = normalizeUsername(username);
             if (!normalized) return null;
@@ -1203,7 +1378,7 @@
                     console.warn('Erro ao procurar utilizador no Supabase.', error);
                     return null;
                 }
-                return data || null;
+                return mapUserRecord(data);
             } catch (error) {
                 console.warn('Erro ao procurar utilizador no Supabase.', error);
                 return null;
@@ -1220,11 +1395,16 @@
                     console.warn('Erro ao listar utilizadores no Supabase.', error);
                     return [];
                 }
-                return data || [];
+                return (data || []).map(mapUserRecord);
             } catch (error) {
                 console.warn('Erro ao listar utilizadores no Supabase.', error);
                 return [];
             }
+        }
+
+        /** Alias kept for callers / docs that refer to loadUsers(). */
+        async function loadUsers() {
+            return listUsers();
         }
 
         async function countUsers() {
@@ -1264,7 +1444,7 @@
                 .select('*')
                 .maybeSingle();
             if (error) throw error;
-            return data;
+            return mapUserRecord(data);
         }
 
         async function deleteUserRecord(username) {
@@ -1491,9 +1671,9 @@
         }
 
         async function completeLogin(user) {
-            currentUser = user;
-            saveSession(user.username);
-            applyUserToProfile(user);
+            currentUser = mapUserRecord(user);
+            saveSession(currentUser.username);
+            applyUserToProfile(currentUser);
             hideLoginScreen();
             updateSidebarUserInfo();
             updateAddProductModalForProfile();
@@ -1868,34 +2048,49 @@
             }
         }
 
-        async function addUserFromAdmin() {
+        async function saveUser(existingUsername = null) {
             if (!canManageUsers()) return alert('Apenas administradores podem adicionar utilizadores.');
 
             const username = normalizeUsername(document.getElementById('newUserUsername')?.value);
             const role = document.getElementById('newUserRole')?.value || 'analista';
+            const assigned_units = getSelectedUserUnits();
 
             if (!username) return alert('Indique o nome de utilizador.');
             if (!USER_PROFILES[role]) return alert('Perfil inválido.');
-            if (await findUser(username)) return alert('Esse utilizador já existe.');
 
             try {
-                await createUserRecord({
-                    username,
-                    displayName: username,
-                    role,
-                    passwordHash: null,
-                    accessRevoked: false,
-                    createdAt: getTodayDateString(),
-                    createdBy: currentUser?.username || 'admin'
-                });
+                if (existingUsername) {
+                    const target = normalizeUsername(existingUsername);
+                    await updateUserFields(target, {
+                        role,
+                        assigned_units
+                    });
+                } else {
+                    if (await findUser(username)) return alert('Esse utilizador já existe.');
+                    await createUserRecord({
+                        username,
+                        displayName: username,
+                        role,
+                        passwordHash: null,
+                        accessRevoked: false,
+                        createdAt: getTodayDateString(),
+                        createdBy: currentUser?.username || 'admin',
+                        assigned_units
+                    });
+                }
 
                 document.getElementById('newUserUsername').value = '';
                 document.getElementById('newUserRole').value = 'analista';
+                setSelectedUserUnits([]);
                 await renderUserManagement();
             } catch (error) {
-                console.warn('Erro ao criar utilizador no Supabase.', error);
-                alert('Não foi possível criar o utilizador.');
+                console.warn('Erro ao guardar utilizador no Supabase.', error);
+                alert('Não foi possível guardar o utilizador.');
             }
+        }
+
+        async function addUserFromAdmin() {
+            return saveUser(null);
         }
 
         function loadProfile() {
@@ -2555,7 +2750,11 @@
                 title: item.title,
                 message: item.message,
                 scheduledDate: item.scheduled_date,
-                status: item.status
+                status: item.status,
+                visibilityType: item.visibility_type ?? 'all',
+                visibilityUnits: Array.isArray(item.visibility_units) ? item.visibility_units : (item.visibility_units ?? []),
+                visibilityRoles: Array.isArray(item.visibility_roles) ? item.visibility_roles : (item.visibility_roles ?? []),
+                createdBy: item.created_by ?? ''
             }));
         }
 
@@ -2578,7 +2777,11 @@
                 title: item.title,
                 message: item.message ?? null,
                 scheduled_date: item.scheduledDate ?? null,
-                status: item.status
+                status: item.status,
+                visibility_type: item.visibilityType ?? 'all',
+                visibility_units: item.visibilityUnits ?? [],
+                visibility_roles: item.visibilityRoles ?? [],
+                created_by: item.createdBy ?? null
             }));
 
             console.log("rows", rows);
@@ -4729,6 +4932,64 @@
             renderAlerts();
         }
 
+        function canUserSeeAlert(alert) {
+            if (!alert) return false;
+
+            const visibilityType = alert.visibilityType || 'all';
+            if (visibilityType === 'all') return true;
+
+            if (visibilityType === 'me') {
+                return Boolean(currentUser?.username) && alert.createdBy === currentUser.username;
+            }
+
+            const visibilityUnits = Array.isArray(alert.visibilityUnits)
+                ? alert.visibilityUnits.filter(Boolean)
+                : [];
+            const visibilityRoles = Array.isArray(alert.visibilityRoles)
+                ? alert.visibilityRoles.filter(Boolean)
+                : [];
+            const hasUnits = visibilityUnits.length > 0;
+            const hasRoles = visibilityRoles.length > 0;
+
+            // Restricted/units with no filters: deny (safer default).
+            if (!hasUnits && !hasRoles) return false;
+
+            const normalizeRole = (role) => {
+                const value = String(role || '').toLowerCase().trim();
+                if (value === 'administrador' || value === 'administrator' || value === 'admin') return 'administrator';
+                if (value === 'manager' || value === 'gestor') return 'manager';
+                if (value === 'analista' || value === 'analyst') return 'analyst';
+                return value;
+            };
+
+            let unitsOk = true;
+            let rolesOk = true;
+
+            if (hasUnits) {
+                const rawUnits = currentUser?.assignedUnits ?? [];
+                const userUnits = Array.isArray(rawUnits)
+                    ? rawUnits.map(String).filter(Boolean)
+                    : String(rawUnits || '').split(',').map(v => v.trim()).filter(Boolean);
+                unitsOk = visibilityUnits.some(unit => userUnits.includes(unit));
+            }
+
+            if (hasRoles) {
+                const userRole = normalizeRole(currentUser?.role || currentProfile);
+                const targets = visibilityRoles.map(normalizeRole);
+                if (userRole === 'administrator') {
+                    rolesOk = targets.includes('administrator') || targets.includes('manager');
+                } else if (userRole === 'manager') {
+                    rolesOk = targets.includes('manager');
+                } else if (userRole === 'analyst') {
+                    rolesOk = targets.includes('analyst');
+                } else {
+                    rolesOk = false;
+                }
+            }
+
+            return unitsOk && rolesOk;
+        }
+
         function renderAlerts() {
             const container = document.getElementById('alertContainer');
             if (!container) return;
@@ -4738,9 +4999,9 @@
             const today = getTodayDateString();
             const showManagerAlerts = canViewManagerAlerts();
             const pendingProductApprovals = productApprovals.filter(item => item.status === 'pending');
-            const activeAlerts = showManagerAlerts ? alerts.filter(alert => alert.status === 'active') : [];
-            const scheduledAlerts = showManagerAlerts ? alerts.filter(alert => alert.status === 'scheduled' && alert.scheduledDate > today) : [];
-            const doneAlerts = showManagerAlerts ? alerts.filter(alert => alert.status === 'done') : [];
+            const activeAlerts = alerts.filter(alert => alert.status === 'active' && canUserSeeAlert(alert));
+            const scheduledAlerts = alerts.filter(alert => alert.status === 'scheduled' && alert.scheduledDate > today && canUserSeeAlert(alert));
+            const doneAlerts = alerts.filter(alert => alert.status === 'done' && canUserSeeAlert(alert));
             const reviewedProductApprovals = productApprovals.filter(item => item.status === 'approved' || item.status === 'rejected');
             const budgetAlerts = showManagerAlerts ? filterActiveSystemAlerts(getBudgetAlerts(), getBudgetAlertKey) : [];
             const stalePendingOrders = showManagerAlerts ? filterActiveSystemAlerts(getStalePendingOrderAlerts(), getPendingOrderAlertKey) : [];
@@ -5175,7 +5436,26 @@
             const dateInput = document.getElementById('alert_date');
             dateInput.min = getTodayDateString();
             dateInput.value = getTodayDateString();
+
+            const visibilitySelect = document.getElementById('alert_visibility');
+            if (visibilitySelect) visibilitySelect.value = 'all';
+
+            const unitsContainer = document.getElementById('alert_visibility_units_container');
+            if (unitsContainer) {
+                unitsContainer.style.display = 'none';
+                unitsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.checked = false;
+                });
+            }
+
             openModal('modalAlerta');
+        }
+
+        function updateAlertVisibilityUnits() {
+            const visibilitySelect = document.getElementById('alert_visibility');
+            const unitsContainer = document.getElementById('alert_visibility_units_container');
+            if (!visibilitySelect || !unitsContainer) return;
+            unitsContainer.style.display = visibilitySelect.value === 'units' ? '' : 'none';
         }
 
         async function saveAlerta() {
@@ -5191,6 +5471,17 @@
                 return alert('Preencha o título, a descrição e a data.');
             }
 
+            const visibilityType = document.getElementById('alert_visibility')?.value || 'all';
+            const roleValues = new Set(['administrator', 'manager', 'analyst']);
+            let visibilityUnits = [];
+            let visibilityRoles = [];
+            if (visibilityType === 'units') {
+                const checked = [...document.querySelectorAll('#alert_visibility_units_container input[type="checkbox"]:checked')]
+                    .map(cb => cb.value);
+                visibilityRoles = checked.filter(v => roleValues.has(v));
+                visibilityUnits = checked.filter(v => !roleValues.has(v));
+            }
+
             const today = getTodayDateString();
             alerts.push({
                 id: getNextAlertId(),
@@ -5198,7 +5489,11 @@
                 title,
                 message,
                 scheduledDate,
-                status: scheduledDate > today ? 'scheduled' : 'active'
+                status: scheduledDate > today ? 'scheduled' : 'active',
+                visibilityType,
+                visibilityUnits,
+                visibilityRoles,
+                createdBy: currentUser?.username || ''
             });
 
             await saveAlerts();
