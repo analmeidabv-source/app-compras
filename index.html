@@ -2729,17 +2729,17 @@
         }
 
         async function saveWasteRecords() {
-            if (!wasteRecords.length) {
-                const { error: deleteError } = await supabaseClient
-                    .from("waste_records")
-                    .delete()
-                    .not("id", "is", null);
+            const { error: deleteError } = await supabaseClient
+                .from("waste_records")
+                .delete()
+                .not("id", "is", null);
 
-                if (deleteError) {
-                    console.error("Erro ao guardar waste_records:", deleteError);
-                }
+            if (deleteError) {
+                console.error("Erro ao guardar waste_records:", deleteError);
                 return;
             }
+
+            if (!wasteRecords.length) return;
 
             const rows = wasteRecords.map(item => ({
                 id: item.id,
@@ -2753,7 +2753,7 @@
 
             const { error } = await supabaseClient
                 .from("waste_records")
-                .upsert(rows, { onConflict: 'id' });
+                .insert(rows);
 
             if (error) {
                 console.error("Erro ao guardar waste_records:", error);
