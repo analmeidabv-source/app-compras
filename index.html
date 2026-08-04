@@ -2673,6 +2673,49 @@
 
         let wasteRecords = loadWasteRecords();
 
+        async function migrateWasteRecordsToSupabase() {
+            const { data: existing, error: checkError } = await supabaseClient
+                .from("waste_records")
+                .select("id")
+                .limit(1);
+
+            if (checkError) {
+                console.error("Erro ao verificar waste_records:", checkError);
+                return;
+            }
+
+            if (existing && existing.length > 0) {
+                console.log("migrateWasteRecordsToSupabase: tabela já tem dados — nada a fazer.");
+                return;
+            }
+
+            if (!wasteRecords.length) {
+                console.log("migrateWasteRecordsToSupabase: wasteRecords vazio — nada a inserir.");
+                return;
+            }
+
+            const rows = wasteRecords.map(item => ({
+                id: item.id,
+                unit: item.unit,
+                product: item.product,
+                quantity: item.quantity,
+                date: item.date,
+                registered_by: item.registeredBy ?? null,
+                notes: item.notes ?? null
+            }));
+
+            const { error: insertError } = await supabaseClient
+                .from("waste_records")
+                .insert(rows);
+
+            if (insertError) {
+                console.error("Erro ao migrar waste_records:", insertError);
+                return;
+            }
+
+            console.log(`migrateWasteRecordsToSupabase: inseridos ${rows.length} registos.`);
+        }
+
         function saveWasteRecords() {
             localStorage.setItem(WASTE_STORAGE_KEY, JSON.stringify(wasteRecords));
         }
