@@ -5096,6 +5096,7 @@
         }
 
         async function saveAlerta() {
+            console.log("saveAlert chamada");
             if (!canViewManagerAlerts()) return;
 
             const title = document.getElementById('alert_title').value.trim();
