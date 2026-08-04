@@ -2277,7 +2277,7 @@
         }
 
         let inventory = [];
-        let productApprovals = loadProductApprovals();
+        let productApprovals = [];
 
         async function migrateProductApprovalsToSupabase() {
             const { data: existing, error: checkError } = await supabaseClient
@@ -5102,6 +5102,7 @@
             shoppingList = await loadShoppingList();
             renderShopping();
             renderUsageStats();
+            productApprovals = await loadProductApprovals();
             renderAlerts();
             updateHeaderActionButtons('tab-inventario');
             setActiveSidebarButton('tab-inventario');
