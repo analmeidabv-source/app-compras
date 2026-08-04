@@ -2905,17 +2905,17 @@
         }
 
         async function saveAlerts() {
-            if (!alerts.length) {
-                const { error: deleteError } = await supabaseClient
-                    .from("alerts")
-                    .delete()
-                    .not("id", "is", null);
+            const { error: deleteError } = await supabaseClient
+                .from("alerts")
+                .delete()
+                .not("id", "is", null);
 
-                if (deleteError) {
-                    console.error("Erro ao guardar alerts:", deleteError);
-                }
+            if (deleteError) {
+                console.error("Erro ao guardar alerts:", deleteError);
                 return;
             }
+
+            if (!alerts.length) return;
 
             const rows = alerts.map(item => ({
                 id: item.id,
@@ -2933,7 +2933,7 @@
             console.log("rows", rows);
             const { error } = await supabaseClient
                 .from("alerts")
-                .upsert(rows, { onConflict: 'id' });
+                .insert(rows);
 
             console.log("saveAlerts error", error);
             if (error) {
