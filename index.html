@@ -2538,18 +2538,58 @@
 
         const ALERTS_STORAGE_KEY = 'fk_procurement_alerts_v1';
 
-        function loadAlerts() {
-            try {
-                const stored = localStorage.getItem(ALERTS_STORAGE_KEY);
-                if (stored) return JSON.parse(stored);
-            } catch (error) {
-                console.warn('Não foi possível carregar os alertas guardados.', error);
+        async function loadAlerts() {
+            const { data, error } = await supabaseClient
+                .from("alerts")
+                .select("*")
+                .order("id", { ascending: true });
+
+            if (error) {
+                console.error("Erro ao carregar alerts:", error);
+                return [];
             }
-            return [];
+
+            return (data || []).map(item => ({
+                id: item.id,
+                type: item.type,
+                title: item.title,
+                message: item.message,
+                scheduledDate: item.scheduled_date,
+                status: item.status
+            }));
         }
 
-        function saveAlerts() {
-            localStorage.setItem(ALERTS_STORAGE_KEY, JSON.stringify(alerts));
+        async function saveAlerts() {
+            if (!alerts.length) {
+                const { error: deleteError } = await supabaseClient
+                    .from("alerts")
+                    .delete()
+                    .not("id", "is", null);
+
+                if (deleteError) {
+                    console.error("Erro ao guardar alerts:", deleteError);
+                }
+                return;
+            }
+
+            const rows = alerts.map(item => ({
+                id: item.id,
+                type: item.type,
+                title: item.title,
+                message: item.message ?? null,
+                scheduled_date: item.scheduledDate ?? null,
+                status: item.status
+            }));
+
+            console.log("rows", rows);
+            const { error } = await supabaseClient
+                .from("alerts")
+                .upsert(rows, { onConflict: 'id' });
+
+            console.log("saveAlerts error", error);
+            if (error) {
+                console.error("Erro ao guardar alerts:", error);
+            }
         }
 
         let alerts = loadAlerts();
@@ -5033,7 +5073,7 @@
             return alerts.length ? Math.max(...alerts.map(item => item.id)) + 1 : 1;
         }
 
-        function processScheduledAlerts() {
+        async function processScheduledAlerts() {
             const today = getTodayDateString();
             let changed = false;
             alerts.forEach(alert => {
@@ -5042,7 +5082,7 @@
                     changed = true;
                 }
             });
-            if (changed) saveAlerts();
+            if (changed) await saveAlerts();
         }
 
         function openModalAlerta() {
@@ -5055,7 +5095,7 @@
             openModal('modalAlerta');
         }
 
-        function saveAlerta() {
+        async function saveAlerta() {
             if (!canViewManagerAlerts()) return;
 
             const title = document.getElementById('alert_title').value.trim();
@@ -5077,23 +5117,23 @@
                 status: scheduledDate > today ? 'scheduled' : 'active'
             });
 
-            saveAlerts();
+            await saveAlerts();
             closeModal('modalAlerta');
             renderAlerts();
         }
 
-        function markAlertDone(id) {
+        async function markAlertDone(id) {
             const alert = alerts.find(item => item.id === id);
             if (alert) {
                 alert.status = 'done';
-                saveAlerts();
+                await saveAlerts();
                 renderAlerts();
             }
         }
 
-        function removeAlert(id) {
+        async function removeAlert(id) {
             alerts = alerts.filter(item => item.id !== id);
-            saveAlerts();
+            await saveAlerts();
             renderAlerts();
         }
 
