@@ -2661,17 +2661,29 @@
 
         const defaultWasteRecords = [];
 
-        function loadWasteRecords() {
-            try {
-                const stored = localStorage.getItem(WASTE_STORAGE_KEY);
-                if (stored) return JSON.parse(stored);
-            } catch (error) {
-                console.warn('Não foi possível carregar os descartes guardados.', error);
+        async function loadWasteRecords() {
+            const { data, error } = await supabaseClient
+                .from("waste_records")
+                .select("*")
+                .order("date", { ascending: false });
+
+            if (error) {
+                console.error("Erro ao carregar waste_records:", error);
+                return [];
             }
-            return defaultWasteRecords.map(item => ({ ...item }));
+
+            return (data || []).map(item => ({
+                id: item.id,
+                unit: item.unit,
+                product: item.product,
+                quantity: item.quantity,
+                date: item.date,
+                registeredBy: item.registered_by,
+                notes: item.notes
+            }));
         }
 
-        let wasteRecords = loadWasteRecords();
+        let wasteRecords = [];
 
         async function migrateWasteRecordsToSupabase() {
             const { data: existing, error: checkError } = await supabaseClient
@@ -2716,8 +2728,36 @@
             console.log(`migrateWasteRecordsToSupabase: inseridos ${rows.length} registos.`);
         }
 
-        function saveWasteRecords() {
-            localStorage.setItem(WASTE_STORAGE_KEY, JSON.stringify(wasteRecords));
+        async function saveWasteRecords() {
+            if (!wasteRecords.length) {
+                const { error: deleteError } = await supabaseClient
+                    .from("waste_records")
+                    .delete()
+                    .not("id", "is", null);
+
+                if (deleteError) {
+                    console.error("Erro ao guardar waste_records:", deleteError);
+                }
+                return;
+            }
+
+            const rows = wasteRecords.map(item => ({
+                id: item.id,
+                unit: item.unit,
+                product: item.product,
+                quantity: item.quantity,
+                date: item.date,
+                registered_by: item.registeredBy,
+                notes: item.notes ?? null
+            }));
+
+            const { error } = await supabaseClient
+                .from("waste_records")
+                .upsert(rows, { onConflict: 'id' });
+
+            if (error) {
+                console.error("Erro ao guardar waste_records:", error);
+            }
         }
 
         function escapeHtml(value) {
@@ -4433,7 +4473,7 @@
             clearWasteForm();
         }
 
-        function saveWasteRecord() {
+        async function saveWasteRecord() {
             const recordId = document.getElementById('waste_id').value;
             const unit = document.getElementById('waste_unit_select').value;
             const product = document.getElementById('waste_product').value.trim();
@@ -4464,18 +4504,18 @@
                 wasteRecords.push(payload);
             }
 
-            saveWasteRecords();
+            await saveWasteRecords();
             closeWasteModal();
             renderUsageStats();
         }
 
-        function deleteWasteRecord(recordId) {
+        async function deleteWasteRecord(recordId) {
             const record = wasteRecords.find(item => item.id === recordId);
             if (!record) return;
             if (!confirm(`Eliminar o registo de descarte de «${record.product}»?`)) return;
 
             wasteRecords = wasteRecords.filter(item => item.id !== recordId);
-            saveWasteRecords();
+            await saveWasteRecords();
             renderUsageStats();
         }
 
@@ -5227,6 +5267,7 @@
             renderPurchaseFilters();
             shoppingList = await loadShoppingList();
             renderShopping();
+            wasteRecords = await loadWasteRecords();
             renderUsageStats();
             productApprovals = await loadProductApprovals();
             alerts = await loadAlerts();
