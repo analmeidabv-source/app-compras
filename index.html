@@ -642,68 +642,87 @@
                                 <option value="administrador">Administrador</option>
                             </select>
                         </div>
-                        <div id="user_units_container">
+                        <div>
                             <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Unidades atribuídas</label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="U2">
-                                <span class="text-xs text-slate-700">U2</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="U3">
-                                <span class="text-xs text-slate-700">U3</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="U4">
-                                <span class="text-xs text-slate-700">U4</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="U5">
-                                <span class="text-xs text-slate-700">U5</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="Estabilidades U2">
-                                <span class="text-xs text-slate-700">Estabilidades U2</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="Estabilidades U3">
-                                <span class="text-xs text-slate-700">Estabilidades U3</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="Estabilidades U4">
-                                <span class="text-xs text-slate-700">Estabilidades U4</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="Estabilidades U5">
-                                <span class="text-xs text-slate-700">Estabilidades U5</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="VMA-U3">
-                                <span class="text-xs text-slate-700">VMA-U3</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="VMA-U4">
-                                <span class="text-xs text-slate-700">VMA-U4</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="VMA-U5">
-                                <span class="text-xs text-slate-700">VMA-U5</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="Microbiologia">
-                                <span class="text-xs text-slate-700">Microbiologia</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="Projetos-FIPS">
-                                <span class="text-xs text-slate-700">Projetos-FIPS</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="U2-Sugammadex">
-                                <span class="text-xs text-slate-700">U2-Sugammadex</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" value="VMA-Sugammadex">
-                                <span class="text-xs text-slate-700">VMA-Sugammadex</span>
-                            </label>
+                            <button type="button" id="userUnitsSummaryBtn" onclick="openUserUnitsPicker()"
+                                class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-700 outline-none hover:border-violet-300 focus:ring-2 focus:ring-violet-200 transition flex items-center justify-between gap-2">
+                                <span id="userUnitsSummaryText" class="truncate">Selecionar unidades</span>
+                                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 flex-shrink-0"></i>
+                            </button>
+                            <div id="userUnitsPickerModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+                                <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[min(80vh,28rem)]">
+                                    <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-2 flex-shrink-0">
+                                        <h4 class="text-sm font-semibold text-slate-900">Selecionar unidades</h4>
+                                        <button type="button" onclick="cancelUserUnitsPicker()" class="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+                                    </div>
+                                    <div id="user_units_container" class="overflow-y-auto flex-1 min-h-0 p-3 space-y-0.5">
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="U2">
+                                            <span class="text-xs text-slate-700">U2</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="U3">
+                                            <span class="text-xs text-slate-700">U3</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="U4">
+                                            <span class="text-xs text-slate-700">U4</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="U5">
+                                            <span class="text-xs text-slate-700">U5</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="Estabilidades U2">
+                                            <span class="text-xs text-slate-700">Estabilidades U2</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="Estabilidades U3">
+                                            <span class="text-xs text-slate-700">Estabilidades U3</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="Estabilidades U4">
+                                            <span class="text-xs text-slate-700">Estabilidades U4</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="Estabilidades U5">
+                                            <span class="text-xs text-slate-700">Estabilidades U5</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="VMA-U3">
+                                            <span class="text-xs text-slate-700">VMA-U3</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="VMA-U4">
+                                            <span class="text-xs text-slate-700">VMA-U4</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="VMA-U5">
+                                            <span class="text-xs text-slate-700">VMA-U5</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="Microbiologia">
+                                            <span class="text-xs text-slate-700">Microbiologia</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="Projetos-FIPS">
+                                            <span class="text-xs text-slate-700">Projetos-FIPS</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="U2-Sugammadex">
+                                            <span class="text-xs text-slate-700">U2-Sugammadex</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 px-1 py-1">
+                                            <input type="checkbox" value="VMA-Sugammadex">
+                                            <span class="text-xs text-slate-700">VMA-Sugammadex</span>
+                                        </label>
+                                    </div>
+                                    <div class="px-4 py-3 border-t border-slate-100 flex gap-2 flex-shrink-0">
+                                        <button type="button" onclick="cancelUserUnitsPicker()" class="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition">Cancelar</button>
+                                        <button type="button" onclick="confirmUserUnitsPicker()" class="flex-1 rounded-lg bg-[#8B7EC8] px-3 py-2 text-sm font-medium text-white hover:bg-[#7A6BB0] transition">Concluir</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <button onclick="addUserFromAdmin()" class="w-full rounded-lg bg-[#8B7EC8] py-2.5 text-sm font-medium text-white hover:bg-[#7A6BB0] transition">
                             Adicionar Utilizador
@@ -1358,11 +1377,46 @@
                 .filter(Boolean);
         }
 
+        let userUnitsPickerSnapshot = null;
+
+        function updateUserUnitsSummary() {
+            const textEl = document.getElementById('userUnitsSummaryText');
+            if (!textEl) return;
+            const selected = getSelectedUserUnits();
+            textEl.textContent = selected.length
+                ? `${selected.join(', ')} (${selected.length})`
+                : 'Selecionar unidades';
+        }
+
+        function openUserUnitsPicker() {
+            userUnitsPickerSnapshot = getSelectedUserUnits();
+            const modal = document.getElementById('userUnitsPickerModal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeUserUnitsPicker() {
+            const modal = document.getElementById('userUnitsPickerModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function cancelUserUnitsPicker() {
+            setSelectedUserUnits(userUnitsPickerSnapshot || []);
+            userUnitsPickerSnapshot = null;
+            closeUserUnitsPicker();
+        }
+
+        function confirmUserUnitsPicker() {
+            userUnitsPickerSnapshot = null;
+            closeUserUnitsPicker();
+            updateUserUnitsSummary();
+        }
+
         function setSelectedUserUnits(units) {
             const selected = new Set(normalizeAssignedUnits(units));
             document.querySelectorAll('#user_units_container input[type="checkbox"]').forEach(checkbox => {
                 checkbox.checked = selected.has(checkbox.value);
             });
+            updateUserUnitsSummary();
         }
 
         async function findUser(username) {
