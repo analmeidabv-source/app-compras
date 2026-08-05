@@ -2688,9 +2688,8 @@
                 ...item,
                 cartNumber: item.cart_number,
                 quoteRequested: item.quote_requested,
-    quoteDate: item.quote_date,
-    quotes: Array.isArray(item.quotes) ? item.quotes : []
-}));
+                quoteDate: item.quote_date,
+                quotes: Array.isArray(item.quotes) ? item.quotes : []
             }));
         }
 
@@ -3860,11 +3859,10 @@
             if (!item?.id) return alert("Pedido inválido.");
 
             const updates = {
-    status: item.status,
-    quote_requested: item.quoteRequested,
-    quote_date: item.quoteDate,
-    quotes: item.quotes
-};
+                status: item.status,
+                quote_requested: item.quoteRequested,
+                quote_date: item.quoteDate,
+                quotes: item.quotes
             };
 
             const { error } = await supabaseClient
@@ -5366,23 +5364,23 @@
                         };
 
                 const actionsHtml = isDone
-                    ? `
-                            <div class="mt-3 flex gap-2 pl-11">
-                                <button onclick="${isTask ? `removeAlert(${alert.id})` : softDismissAction}" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
-                            </div>
-                        `
-                    : isTask
-                        ? `
-                            <div class="mt-3 flex flex-wrap gap-2 pl-11">
-                                <button onclick="markAlertDone(${alert.id})" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">Marcar como feito</button>
+                    ? (
+                        isTask
+                            ? `<div class="mt-3 flex gap-2 pl-11">
                                 <button onclick="removeAlert(${alert.id})" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
-                            </div>
-                        `
-                        : `
-                            <div class="mt-3 flex gap-2 pl-11">
-                                <button onclick="${softDismissAction}" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
-                            </div>
-                        `;
+                            </div>`
+                            : `<div class="mt-3 flex gap-2 pl-11">
+                                <button onclick="${softDismissAction}" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Ocultar</button>
+                            </div>`
+                    )
+                    : isTask
+                        ? `<div class="mt-3 flex flex-wrap gap-2 pl-11">
+                                <button onclick="markAlertDone(${alert.id})" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">Concluir</button>
+                                <button onclick="removeAlert(${alert.id})" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
+                            </div>`
+                        : `<div class="mt-3 flex gap-2 pl-11">
+                                <button onclick="${softDismissAction}" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Ocultar</button>
+                            </div>`;
 
                 return `
                     <div class="rounded-xl border ${palette.border} bg-white p-3.5">
