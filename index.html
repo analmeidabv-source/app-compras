@@ -1162,6 +1162,14 @@
                     </select>
                 </div>
                 <div>
+                    <label class="text-[10px] font-bold uppercase text-slate-400">Tipo</label>
+                    <select id="alert_kind" class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-200 bg-white" required>
+                        <option value="lembrete" selected>Lembrete</option>
+                        <option value="tarefa">Tarefa</option>
+                        <option value="informativo">Informativo</option>
+                    </select>
+                </div>
+                <div>
                     <label class="text-[10px] font-bold uppercase text-slate-400">Visibilidade</label>
                     <select id="alert_visibility" onchange="updateAlertVisibilityUnits()" class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-200 bg-white">
                         <option value="all">Todos os utilizadores</option>
@@ -2900,7 +2908,8 @@
                 visibilityType: item.visibility_type ?? 'all',
                 visibilityUnits: Array.isArray(item.visibility_units) ? item.visibility_units : (item.visibility_units ?? []),
                 visibilityRoles: Array.isArray(item.visibility_roles) ? item.visibility_roles : (item.visibility_roles ?? []),
-                createdBy: item.created_by ?? ''
+                createdBy: item.created_by ?? '',
+                alertKind: item.alert_kind ?? 'lembrete'
             }));
         }
 
@@ -2927,7 +2936,8 @@
                 visibility_type: item.visibilityType ?? 'all',
                 visibility_units: item.visibilityUnits ?? [],
                 visibility_roles: item.visibilityRoles ?? [],
-                created_by: item.createdBy ?? null
+                created_by: item.createdBy ?? null,
+                alert_kind: item.alertKind ?? 'lembrete'
             }));
 
             console.log("rows", rows);
@@ -2942,6 +2952,73 @@
         }
 
         let alerts = [];
+        let alertUserStatus = [];
+
+        async function loadAlertUserStatus() {
+            if (!currentUser?.username) {
+                alertUserStatus = [];
+                return;
+            }
+
+            const { data, error } = await supabaseClient
+                .from("alert_user_status")
+                .select("*")
+                .eq("username", currentUser.username);
+
+            if (error) {
+                console.error("Erro ao carregar alert_user_status:", error);
+                alertUserStatus = [];
+                return;
+            }
+
+            alertUserStatus = (data || []).map(item => ({
+                alertId: item.alert_id,
+                username: item.username,
+                status: item.status
+            }));
+        }
+
+        async function setAlertUserStatus(alertId, status) {
+            if (!currentUser?.username) {
+                console.warn("setAlertUserStatus: sem utilizador autenticado.");
+                return;
+            }
+
+            const row = {
+                alert_id: alertId,
+                username: currentUser.username,
+                status
+            };
+
+            const { error } = await supabaseClient
+                .from("alert_user_status")
+                .upsert(row, { onConflict: 'alert_id,username' });
+
+            if (error) {
+                console.error("Erro ao guardar alert_user_status:", error);
+                return;
+            }
+
+            const local = {
+                alertId,
+                username: currentUser.username,
+                status
+            };
+            const idx = alertUserStatus.findIndex(
+                item => item.alertId === alertId && item.username === currentUser.username
+            );
+            if (idx >= 0) {
+                alertUserStatus[idx] = local;
+            } else {
+                alertUserStatus.push(local);
+            }
+        }
+
+        function hasAlertUserStatus(alertId, status) {
+            return alertUserStatus.some(
+                item => item.alertId === alertId && item.status === status
+            );
+        }
 
         async function migrateAlertsToSupabase() {
             const { data: existing, error: checkError } = await supabaseClient
@@ -5145,9 +5222,9 @@
             const today = getTodayDateString();
             const showManagerAlerts = canViewManagerAlerts();
             const pendingProductApprovals = productApprovals.filter(item => item.status === 'pending');
-            const activeAlerts = alerts.filter(alert => alert.status === 'active' && canUserSeeAlert(alert));
-            const scheduledAlerts = alerts.filter(alert => alert.status === 'scheduled' && alert.scheduledDate > today && canUserSeeAlert(alert));
-            const doneAlerts = alerts.filter(alert => alert.status === 'done' && canUserSeeAlert(alert));
+            const activeAlerts = alerts.filter(alert => alert.status === 'active' && canUserSeeAlert(alert) && !hasAlertUserStatus(alert.id, 'read') && !hasAlertUserStatus(alert.id, 'dismissed'));
+            const scheduledAlerts = alerts.filter(alert => alert.status === 'scheduled' && alert.scheduledDate > today && canUserSeeAlert(alert) && !hasAlertUserStatus(alert.id, 'read') && !hasAlertUserStatus(alert.id, 'dismissed'));
+            const doneAlerts = alerts.filter(alert => alert.status === 'done' && canUserSeeAlert(alert) && !hasAlertUserStatus(alert.id, 'read') && !hasAlertUserStatus(alert.id, 'dismissed'));
             const reviewedProductApprovals = productApprovals.filter(item => item.status === 'approved' || item.status === 'rejected');
             const budgetAlerts = showManagerAlerts ? filterActiveSystemAlerts(getBudgetAlerts(), getBudgetAlertKey) : [];
             const stalePendingOrders = showManagerAlerts ? filterActiveSystemAlerts(getStalePendingOrderAlerts(), getPendingOrderAlertKey) : [];
@@ -5214,8 +5291,27 @@
                 `;
             };
 
+            const getAlertKindBadge = (alertKind) => {
+                const kind = String(alertKind || 'lembrete').trim().toLowerCase();
+                const map = {
+                    lembrete: { label: '🔔 Lembrete', cls: 'bg-violet-50 text-violet-700' },
+                    tarefa: { label: '📋 Tarefa', cls: 'bg-sky-50 text-sky-700' },
+                    informativo: { label: '📢 Informativo', cls: 'bg-amber-50 text-amber-700' },
+                    sistema: { label: '⚠️ Sistema', cls: 'bg-slate-100 text-slate-700' },
+                    system: { label: '⚠️ Sistema', cls: 'bg-slate-100 text-slate-700' }
+                };
+                const badge = map[kind] || map.lembrete;
+                return `<span class="rounded-md ${badge.cls} px-1.5 py-0.5 text-[10px] font-medium">${badge.label}</span>`;
+            };
+
             const renderAlertCard = (alert) => {
                 const isDone = alert.status === 'done';
+                const kind = String(alert.alertKind || 'lembrete').trim().toLowerCase();
+                const isTask = kind === 'tarefa';
+                const isSystemKind = kind === 'sistema' || kind === 'system';
+                const softDismissAction = isSystemKind
+                    ? `dismissAlert(${alert.id})`
+                    : `markAlertAsRead(${alert.id})`;
                 const palette = isDone
                     ? {
                         border: 'border-slate-200',
@@ -5243,6 +5339,25 @@
                             text: 'text-slate-700'
                         };
 
+                const actionsHtml = isDone
+                    ? `
+                            <div class="mt-3 flex gap-2 pl-11">
+                                <button onclick="${isTask ? `removeAlert(${alert.id})` : softDismissAction}" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
+                            </div>
+                        `
+                    : isTask
+                        ? `
+                            <div class="mt-3 flex flex-wrap gap-2 pl-11">
+                                <button onclick="markAlertDone(${alert.id})" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">Marcar como feito</button>
+                                <button onclick="removeAlert(${alert.id})" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
+                            </div>
+                        `
+                        : `
+                            <div class="mt-3 flex gap-2 pl-11">
+                                <button onclick="${softDismissAction}" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
+                            </div>
+                        `;
+
                 return `
                     <div class="rounded-xl border ${palette.border} bg-white p-3.5">
                         <div class="flex gap-3">
@@ -5251,22 +5366,14 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
+                                    ${getAlertKindBadge(alert.alertKind)}
                                     <p class="text-xs font-semibold ${palette.title}">${alert.title}</p>
                                     ${isDone ? '<span class="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">Concluído</span>' : ''}
                                 </div>
                                 <p class="mt-1 text-sm ${palette.text} leading-snug">${alert.message}</p>
                             </div>
                         </div>
-                        ${isDone ? `
-                            <div class="mt-3 flex gap-2 pl-11">
-                                <button onclick="removeAlert(${alert.id})" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
-                            </div>
-                        ` : `
-                            <div class="mt-3 flex flex-wrap gap-2 pl-11">
-                                <button onclick="markAlertDone(${alert.id})" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">Marcar como feito</button>
-                                <button onclick="removeAlert(${alert.id})" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
-                            </div>
-                        `}
+                        ${actionsHtml}
                     </div>
                 `;
             };
@@ -5486,7 +5593,14 @@
                 ? `
                     <div class="mt-4 pt-4 border-t border-slate-200">
                         <p class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-violet-600">Lembretes Agendados</p>
-                        <div class="space-y-2">${scheduledAlerts.map(alert => `
+                        <div class="space-y-2">${scheduledAlerts.map(alert => {
+                            const kind = String(alert.alertKind || 'lembrete').trim().toLowerCase();
+                            const isTask = kind === 'tarefa';
+                            const isSystemKind = kind === 'sistema' || kind === 'system';
+                            const removeAction = isTask
+                                ? `removeAlert(${alert.id})`
+                                : (isSystemKind ? `dismissAlert(${alert.id})` : `markAlertAsRead(${alert.id})`);
+                            return `
                             <div class="rounded-xl border border-violet-200 bg-white p-3.5">
                                 <div class="flex gap-3">
                                     <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50">
@@ -5494,6 +5608,7 @@
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center gap-2 flex-wrap">
+                                            ${getAlertKindBadge(alert.alertKind)}
                                             <p class="text-xs font-semibold text-violet-700">${alert.title}</p>
                                             <span class="rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-600">Agendado</span>
                                         </div>
@@ -5502,10 +5617,11 @@
                                     </div>
                                 </div>
                                 <div class="mt-3 pl-11">
-                                    <button onclick="removeAlert(${alert.id})" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
+                                    <button onclick="${removeAction}" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
                                 </div>
                             </div>
-                        `).join('')}</div>
+                        `;
+                        }).join('')}</div>
                     </div>
                 `
                 : '';
@@ -5579,6 +5695,8 @@
             document.getElementById('alert_title').value = '';
             document.getElementById('alert_message').value = '';
             document.getElementById('alert_type').value = 'violet';
+            const kindSelect = document.getElementById('alert_kind');
+            if (kindSelect) kindSelect.value = 'lembrete';
             const dateInput = document.getElementById('alert_date');
             dateInput.min = getTodayDateString();
             dateInput.value = getTodayDateString();
@@ -5614,6 +5732,7 @@
             const message = document.getElementById('alert_message').value.trim();
             const scheduledDate = document.getElementById('alert_date').value;
             const type = document.getElementById('alert_type').value;
+            const alertKind = document.getElementById('alert_kind')?.value || 'lembrete';
 
             if (!title || !message || !scheduledDate) {
                 return alert('Preencha o título, a descrição e a data.');
@@ -5641,7 +5760,8 @@
                 visibilityType,
                 visibilityUnits,
                 visibilityRoles,
-                createdBy: currentUser?.username || ''
+                createdBy: currentUser?.username || '',
+                alertKind
             });
 
             await saveAlerts();
@@ -5661,6 +5781,18 @@
         async function removeAlert(id) {
             alerts = alerts.filter(item => item.id !== id);
             await saveAlerts();
+            renderAlerts();
+        }
+
+        async function markAlertAsRead(alertId) {
+            await setAlertUserStatus(alertId, 'read');
+            await loadAlertUserStatus();
+            renderAlerts();
+        }
+
+        async function dismissAlert(alertId) {
+            await setAlertUserStatus(alertId, 'dismissed');
+            await loadAlertUserStatus();
             renderAlerts();
         }
 
@@ -5714,6 +5846,7 @@
             renderUsageStats();
             productApprovals = await loadProductApprovals();
             alerts = await loadAlerts();
+            await loadAlertUserStatus();
             renderAlerts();
             updateHeaderActionButtons('tab-inventario');
             setActiveSidebarButton('tab-inventario');
