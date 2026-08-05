@@ -2689,7 +2689,9 @@
                 cartNumber: item.cart_number,
                 quoteRequested: item.quote_requested,
                 quoteDate: item.quote_date,
-                quotes: Array.isArray(item.quotes) ? item.quotes : []
+                quotes: Array.isArray(item.quotes) ? item.quotes : [],
+                selectedSupplier: item.selected_supplier ?? null,
+                selectedPrice: item.selected_price ?? null
             }));
         }
 
@@ -3744,10 +3746,107 @@
             return `<span title="${escapeHtml(title)}" ${clickAttr}>${escapeHtml(label)}</span>`;
         }
 
+        const QUOTE_ROW_BASE_CLASS = 'order-quote-row rounded-lg border border-slate-200 bg-white p-2.5 space-y-2';
+        const QUOTE_ROW_BEST_CLASS = 'order-quote-row rounded-lg border border-emerald-400 bg-emerald-50/70 ring-1 ring-emerald-200 p-2.5 space-y-2';
+
+        function parseQuotePrice(raw) {
+            if (raw == null) return null;
+            let s = String(raw).trim();
+            if (!s) return null;
+            s = s.replace(/\s/g, '').replace(/€/gi, '');
+            const hasComma = s.includes(',');
+            const hasDot = s.includes('.');
+            if (hasComma && hasDot) {
+                if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+                    s = s.replace(/\./g, '').replace(',', '.');
+                } else {
+                    s = s.replace(/,/g, '');
+                }
+            } else if (hasComma) {
+                s = s.replace(',', '.');
+            }
+            s = s.replace(/[^0-9.-]/g, '');
+            if (!s || s === '-' || s === '.' || s === '-.') return null;
+            const n = parseFloat(s);
+            return Number.isFinite(n) ? n : null;
+        }
+
+        function formatEuroDiff(diff) {
+            return '+' + diff.toFixed(2).replace('.', ',') + ' €';
+        }
+
+        function clearQuotePriceComparisonUI(row) {
+            if (!row) return;
+            row.className = QUOTE_ROW_BASE_CLASS;
+            row.removeAttribute('data-quote-best');
+            const meta = row.querySelector('[data-quote-price-meta]');
+            if (meta) {
+                meta.textContent = '';
+                meta.className = 'text-[10px] font-semibold hidden';
+            }
+        }
+
+        function getCheckedQuoteSelectRow() {
+            return document.querySelector('#quote_list [data-quote-select]:checked')?.closest('.order-quote-row') || null;
+        }
+
+        function selectQuoteWinningRow(row) {
+            const radio = row?.querySelector('[data-quote-select]');
+            if (radio) radio.checked = true;
+        }
+
+        function autoSelectUniqueBestQuoteRow(bestRows) {
+            if (!bestRows || bestRows.length !== 1) return;
+            if (getCheckedQuoteSelectRow()) return;
+            selectQuoteWinningRow(bestRows[0].row);
+        }
+
+        function updateQuotePriceComparison() {
+            const list = document.getElementById('quote_list');
+            if (!list) return;
+
+            const rows = Array.from(list.querySelectorAll('.order-quote-row'));
+            const priced = [];
+
+            rows.forEach(row => {
+                clearQuotePriceComparisonUI(row);
+                const raw = row.querySelector('[data-quote-price]')?.value;
+                const value = parseQuotePrice(raw);
+                if (value != null) priced.push({ row, value });
+            });
+
+            if (priced.length === 0) return;
+
+            const best = Math.min(...priced.map(p => p.value));
+            const bestRows = priced.filter(p => p.value === best);
+
+            bestRows.forEach(({ row }) => {
+                row.className = QUOTE_ROW_BEST_CLASS;
+                row.setAttribute('data-quote-best', 'true');
+                const meta = row.querySelector('[data-quote-price-meta]');
+                if (meta) {
+                    meta.textContent = '🥇 Melhor preço';
+                    meta.className = 'inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-800';
+                }
+            });
+
+            if (priced.length >= 2) {
+                priced.forEach(({ row, value }) => {
+                    if (value === best) return;
+                    const meta = row.querySelector('[data-quote-price-meta]');
+                    if (!meta) return;
+                    meta.textContent = formatEuroDiff(value - best);
+                    meta.className = 'text-[10px] font-semibold text-rose-600';
+                });
+            }
+
+            autoSelectUniqueBestQuoteRow(bestRows);
+        }
+
         function createOrderQuoteRowHtml(quote = {}) {
             const dateValue = quote.date || getTodayDateString();
             return `
-                <div class="order-quote-row rounded-lg border border-slate-200 bg-white p-2.5 space-y-2">
+                <div class="${QUOTE_ROW_BASE_CLASS}">
                     <div class="grid gap-2 sm:grid-cols-[1fr_140px_auto] items-center">
                         <div>
                             <label class="block text-[9px] font-semibold uppercase text-slate-400 mb-0.5">Fornecedor</label>
@@ -3763,7 +3862,10 @@
                     </div>
                     <div class="grid gap-2 sm:grid-cols-2">
                         <div>
-                            <label class="block text-[9px] font-semibold uppercase text-slate-400 mb-0.5">Valor (€)</label>
+                            <div class="flex items-center justify-between gap-2 mb-0.5 min-h-[14px]">
+                                <label class="block text-[9px] font-semibold uppercase text-slate-400">Valor (€)</label>
+                                <span data-quote-price-meta class="text-[10px] font-semibold hidden"></span>
+                            </div>
                             <input type="text" data-quote-price placeholder="Opcional" value="${escapeHtml(quote.price || '')}" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-amber-200">
                         </div>
                         <div>
@@ -3771,6 +3873,10 @@
                             <input type="text" data-quote-note placeholder="Opcional" value="${escapeHtml(quote.note || '')}" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-amber-200">
                         </div>
                     </div>
+                    <label class="inline-flex items-center gap-2 cursor-pointer select-none pt-0.5">
+                        <input type="radio" name="quote_winning_supplier" data-quote-select class="h-3.5 w-3.5 border-slate-300 text-amber-600 focus:ring-amber-200">
+                        <span class="text-[11px] font-medium text-slate-600">Selecionar fornecedor</span>
+                    </label>
                 </div>
             `;
         }
@@ -3779,12 +3885,68 @@
             const list = document.getElementById('quote_list');
             if (!list) return;
             list.insertAdjacentHTML('beforeend', createOrderQuoteRowHtml(quote || { date: getTodayDateString() }));
+            if (list.dataset.skipCompare !== '1') updateQuotePriceComparison();
         }
 
         function removeOrderQuoteRow(button) {
             const row = button?.closest('.order-quote-row');
             if (row) row.remove();
+            updateQuotePriceComparison();
         }
+
+        function restoreQuoteSelectedSupplier(item) {
+            const savedSupplier = String(item?.selected_supplier ?? item?.selectedSupplier ?? '').trim();
+            if (!savedSupplier) return false;
+
+            const savedPriceRaw = item?.selected_price ?? item?.selectedPrice;
+            const savedPrice = savedPriceRaw == null || savedPriceRaw === ''
+                ? null
+                : parseQuotePrice(savedPriceRaw);
+
+            const rows = Array.from(document.querySelectorAll('#quote_list .order-quote-row'));
+            let nameMatch = null;
+            let exactMatch = null;
+
+            for (const row of rows) {
+                const supplier = (row.querySelector('[data-quote-supplier]')?.value || '').trim();
+                if (supplier !== savedSupplier) continue;
+                if (!nameMatch) nameMatch = row;
+                if (savedPrice != null) {
+                    const rowPrice = parseQuotePrice(row.querySelector('[data-quote-price]')?.value);
+                    if (rowPrice != null && rowPrice === savedPrice) {
+                        exactMatch = row;
+                        break;
+                    }
+                }
+            }
+
+            const match = exactMatch || nameMatch;
+            if (!match) return false;
+            selectQuoteWinningRow(match);
+            return true;
+        }
+
+        function collectQuoteWinningSelection() {
+            const row = getCheckedQuoteSelectRow();
+            if (!row) {
+                return { selected_supplier: null, selected_price: null };
+            }
+            const supplier = (row.querySelector('[data-quote-supplier]')?.value || '').trim() || null;
+            const selected_price = parseQuotePrice(row.querySelector('[data-quote-price]')?.value);
+            return { selected_supplier: supplier, selected_price };
+        }
+
+        (function bindQuotePriceComparison() {
+            const list = document.getElementById('quote_list');
+            if (!list || list.dataset.priceCompareBound === '1') return;
+            list.dataset.priceCompareBound = '1';
+            list.addEventListener('input', (e) => {
+                if (e.target?.matches?.('[data-quote-price]')) updateQuotePriceComparison();
+            });
+            list.addEventListener('change', (e) => {
+                if (e.target?.matches?.('[data-quote-price]')) updateQuotePriceComparison();
+            });
+        })();
 
         function collectQuoteModalFields() {
             const quotes = [];
@@ -3808,8 +3970,9 @@
 
             const dates = quotes.map(q => q.date).filter(Boolean).sort();
             const quoteDate = dates[dates.length - 1] || getTodayDateString();
+            const selection = collectQuoteWinningSelection();
 
-            return { quoteDate, quotes };
+            return { quoteDate, quotes, ...selection };
         }
 
         function openQuoteModal(index) {
@@ -3821,6 +3984,7 @@
             const list = document.getElementById('quote_list');
             if (list) {
                 list.innerHTML = '';
+                list.dataset.skipCompare = '1';
                 const quotes = getOrderQuotes(item);
                 if (quotes.length > 0) {
                     quotes.forEach(q => addOrderQuoteRow({
@@ -3830,6 +3994,9 @@
                 } else {
                     addOrderQuoteRow({ date: item.quoteDate || getTodayDateString() });
                 }
+                delete list.dataset.skipCompare;
+                restoreQuoteSelectedSupplier(item);
+                updateQuotePriceComparison();
             }
 
             openModal('modalCotacao');
@@ -3854,6 +4021,10 @@
             shoppingList[index].quoteRequested = true;
             shoppingList[index].quoteDate = quoteData.quoteDate;
             shoppingList[index].quotes = quoteData.quotes;
+            shoppingList[index].selected_supplier = quoteData.selected_supplier;
+            shoppingList[index].selected_price = quoteData.selected_price;
+            shoppingList[index].selectedSupplier = quoteData.selected_supplier;
+            shoppingList[index].selectedPrice = quoteData.selected_price;
 
             const item = shoppingList[index];
             if (!item?.id) return alert("Pedido inválido.");
@@ -3862,7 +4033,9 @@
                 status: item.status,
                 quote_requested: item.quoteRequested,
                 quote_date: item.quoteDate,
-                quotes: item.quotes
+                quotes: item.quotes,
+                selected_supplier: item.selected_supplier,
+                selected_price: item.selected_price
             };
 
             const { error } = await supabaseClient
