@@ -1155,18 +1155,18 @@
                     <input type="date" id="alert_date" class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-200 bg-white">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold uppercase text-slate-400">Tipo de alerta</label>
+                    <label class="text-[10px] font-bold uppercase text-slate-400">Prioridade</label>
                     <select id="alert_type" class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-200 bg-white">
-                        <option value="violet">Informativo</option>
+                        <option value="violet">Normal</option>
                         <option value="urgent">Urgente</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold uppercase text-slate-400">Tipo</label>
+                    <label class="text-[10px] font-bold uppercase text-slate-400">Categoria</label>
                     <select id="alert_kind" class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-200 bg-white" required>
                         <option value="lembrete" selected>Lembrete</option>
                         <option value="tarefa">Tarefa</option>
-                        <option value="informativo">Informativo</option>
+                        <option value="informativo">Informação</option>
                     </select>
                 </div>
                 <div>
@@ -5296,7 +5296,7 @@
                 const map = {
                     lembrete: { label: '🔔 Lembrete', cls: 'bg-violet-50 text-violet-700' },
                     tarefa: { label: '📋 Tarefa', cls: 'bg-sky-50 text-sky-700' },
-                    informativo: { label: '📢 Informativo', cls: 'bg-amber-50 text-amber-700' },
+                    informativo: { label: '📢 Informação', cls: 'bg-amber-50 text-amber-700' },
                     sistema: { label: '⚠️ Sistema', cls: 'bg-slate-100 text-slate-700' },
                     system: { label: '⚠️ Sistema', cls: 'bg-slate-100 text-slate-700' }
                 };
