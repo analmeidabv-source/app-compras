@@ -1316,6 +1316,12 @@
             <div class="p-6 space-y-5">
                 <input type="hidden" id="purchaseCostIndex" value="">
 
+                <div id="purchaseQuoteSummary" class="hidden rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-800">
+                    <p class="text-xs font-bold">🏆 Cotação selecionada</p>
+                    <p class="mt-1 text-sm"><span class="font-semibold">Fornecedor:</span> <span id="purchaseQuoteSupplier">—</span></p>
+                    <p class="text-sm"><span class="font-semibold">Valor:</span> <span id="purchaseQuotePrice">—</span></p>
+                </div>
+
                 <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
                     <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Categoria do Produto</label>
                     <div id="purchaseCategoryDisplay" class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-white text-slate-700 font-semibold">
@@ -4239,6 +4245,35 @@
             document.getElementById('purchaseCategoryDisplay').textContent =
                 item.category || item.purchaseCategory || activeBudgetCategory || 'Padrões';
 
+            const winnerSupplier = String(item?.selectedSupplier ?? item?.selected_supplier ?? '').trim();
+            const winnerPrice = parseQuotePrice(item?.selectedPrice ?? item?.selected_price);
+
+            const quoteSummary = document.getElementById('purchaseQuoteSummary');
+            if (quoteSummary) {
+                if (winnerSupplier) {
+                    document.getElementById('purchaseQuoteSupplier').textContent = winnerSupplier;
+                    document.getElementById('purchaseQuotePrice').textContent =
+                        winnerPrice != null
+                            ? `${Number(winnerPrice).toFixed(2).replace('.', ',')} €`
+                            : '—';
+                    quoteSummary.classList.remove('hidden');
+                } else {
+                    document.getElementById('purchaseQuoteSupplier').textContent = '—';
+                    document.getElementById('purchaseQuotePrice').textContent = '—';
+                    quoteSummary.classList.add('hidden');
+                }
+            }
+
+            const supplierInput = document.getElementById('purchaseSupplier');
+            if (supplierInput) {
+                supplierInput.value = winnerSupplier || '';
+            }
+
+            if (winnerPrice != null) {
+                document.getElementById('purchaseUnitPrice').value = winnerPrice;
+                updatePurchaseTotalCost();
+            }
+
             addPurchaseAllocationRow();
             openModal('modalCompraDetalhes');
         }
@@ -4851,6 +4886,17 @@
                             </div>
                         `;
 
+                    const winnerSupplier = item.selectedSupplier || item.selected_supplier;
+                    const winnerPriceRaw = item.selectedPrice ?? item.selected_price;
+                    const winnerPriceNum = winnerPriceRaw != null && winnerPriceRaw !== '' ? Number(winnerPriceRaw) : NaN;
+                    const winnerBadge = winnerSupplier
+                        ? `<div class="mt-1">
+                                <span class="inline-flex rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
+                                    🏆 ${escapeHtml(String(winnerSupplier))}${Number.isFinite(winnerPriceNum) ? ` • ${winnerPriceNum.toFixed(2).replace('.', ',')} €` : ''}
+                                </span>
+                            </div>`
+                        : '';
+
                     tbody.innerHTML += `
                         <tr class="hover:bg-slate-50 transition border-b border-slate-100">
                             <td class="text-xs font-mono text-slate-500">${item.date}</td>
@@ -4877,6 +4923,7 @@
                             </td>
                             <td>
                                 ${statusCell}
+                                ${winnerBadge}
                             </td>
                             ${showCartColumn ? `
                             <td class="text-sm font-mono text-slate-600">
