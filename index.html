@@ -2558,24 +2558,25 @@
                         return;
                     }
 
-                    if (inventory.length > 0) {
-                        const confirmReplace = confirm(
-                            `Foram encontrados ${parsed.length} produtos no ficheiro.\n\nIsto vai substituir os ${inventory.length} produtos atuais do inventário. Continuar?`
-                        );
-                        if (!confirmReplace) return;
+                    const existingKeys = new Set(
+                        inventory.map(item => `${item.name || ''}|${item.reference || ''}|${item.brand || ''}`.toLowerCase())
+                    );
+                    const toInsert = parsed.filter(p =>
+                        !existingKeys.has(`${p.name}|${p.reference}|${p.brand}`.toLowerCase())
+                    );
 
-                        for (const item of inventory) {
-                            if (item?.id == null) continue;
-                            const deleted = await deleteInventoryProduct(item.id);
-                            if (!deleted) {
-                                return alert('Não foi possível limpar o inventário existente no Supabase.');
-                            }
-                        }
+                    if (toInsert.length === 0) {
+                        return alert('Nenhum produto novo para importar — todos já existem na Base de Dados.');
                     }
+
+                    const confirmAdd = confirm(
+                        `Foram encontrados ${parsed.length} produtos no ficheiro.\n\nSerão adicionados ${toInsert.length} produtos novos (sem remover os existentes). Continuar?`
+                    );
+                    if (!confirmAdd) return;
 
                     const { error: insertError } = await supabaseClient
                         .from("inventory")
-                        .insert(parsed);
+                        .insert(toInsert);
 
                     if (insertError) {
                         console.error("Erro ao importar inventário:", insertError);
@@ -2584,7 +2585,7 @@
                     }
 
                     await refreshInventoryFromSupabase();
-                    alert(`${parsed.length} produtos importados com sucesso.`);
+                    alert(`${toInsert.length} produtos importados com sucesso.`);
                 } catch (error) {
                     console.error(error);
                     alert('Erro ao ler o ficheiro. Confirme que é um Excel (.xlsx) ou CSV válido.');
