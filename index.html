@@ -1772,6 +1772,11 @@
             return getUserDisplayName(currentUser);
         }
 
+        /** UI-only: strip legacy "Analista:" / "Requerente:" prefixes from requester display (does not mutate DB). */
+        function formatRequesterName(value) {
+            return String(value || '').replace(/^(Analista|Requerente):\s*/i, '').trim();
+        }
+
         function getProfileLabel() {
             return getCurrentUserName();
         }
@@ -3799,7 +3804,7 @@
                     product: item.name || '—',
                     qty: item.qty ?? '—',
                     value: allocatedValue,
-                    user: item.purchasedBy || item.receivedBy || item.requester || '—'
+                    user: formatRequesterName(item.purchasedBy || item.receivedBy || item.requester) || '—'
                 });
             });
 
@@ -4573,7 +4578,7 @@
             document.getElementById('req_category').value = item.category || 'Padrões';
             document.getElementById('req_qty').value = item.qty;
             // Always show original requester; never replace with current user on edit
-            document.getElementById('req_user').value = String(item.requester || '').replace(/^Analista:\s*/i, '');
+            document.getElementById('req_user').value = formatRequesterName(item.requester);
             document.getElementById('req_urg').value = item.urgent ? "true" : "false";
             const cartInput = document.getElementById('req_cart_number');
             if (cartInput) cartInput.value = item.cartNumber || '';
@@ -5516,7 +5521,7 @@
                         </div>
                         <div class="space-y-2">
                             <p class="text-sm font-bold text-slate-800">Qtd: <span class="text-violet-600">${item.qty}</span></p>
-                            <p class="text-xs text-slate-500">${item.requester}</p>
+                            <p class="text-xs text-slate-500"><span class="font-bold block">Requerente:</span>${escapeHtml(formatRequesterName(item.requester) || '—')}</p>
                             ${item.purpose ? `<p class="text-xs text-slate-500"><span class="font-bold">Finalidade:</span> ${item.purpose}</p>` : ''}
                             ${getOrderLabs(item).length ? `<p class="text-xs text-slate-500"><span class="font-bold">Laboratório:</span> ${formatOrderLabs(item)}</p>` : ''}
                             ${item.brand || item.catalog ? `<p class="text-xs text-slate-500"><span class="font-bold">Marca/Catálogo:</span> ${item.brand || ''} ${item.catalog ? ` / ${item.catalog}` : ''}</p>` : ''}
@@ -5600,10 +5605,11 @@
             const itemsHtml = options.length
                 ? options.map(value => {
                     const isActive = selectedPurchaseFilters[type].includes(value);
+                    const displayValue = type === 'analyst' ? (formatRequesterName(value) || value) : value;
                     return `
                         <label class="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white cursor-pointer border-b border-slate-100 last:border-b-0">
                             <input type="checkbox" ${isActive ? 'checked' : ''} data-filter-type="${type}" data-filter-value="${escapeAttr(value)}" onchange="handlePurchaseFilterChange(this)" class="h-3.5 w-3.5 rounded border-slate-300 text-amber-600 focus:ring-amber-300">
-                            <span class="text-xs font-medium text-slate-700">${escapeHtml(value)}</span>
+                            <span class="text-xs font-medium text-slate-700">${escapeHtml(displayValue)}</span>
                         </label>
                     `;
                 }).join('')
@@ -5832,7 +5838,7 @@
                             </td>
                             <td class="text-sm text-slate-700">${formatOrderLabs(item)}</td>
                             <td class="text-sm text-slate-600">${item.purpose}</td>
-                            <td class="text-xs text-slate-600">${item.requester}</td>
+                            <td class="text-xs text-slate-600">${escapeHtml(formatRequesterName(item.requester) || '—')}</td>
                             <td>
                                 <span class="rounded-full px-3 py-1 text-[11px] font-semibold ${item.urgent ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700'}">
                                     ${item.urgent ? 'URGENTE' : 'NORMAL'}
@@ -6406,7 +6412,7 @@
                                 </div>
                                 <p class="mt-1 text-sm font-semibold text-slate-900">${escapeHtml(request.name)}</p>
                                 <p class="mt-1 text-xs text-slate-600">Ref. ${escapeHtml(request.reference || '—')} · ${escapeHtml(request.brand || '—')}</p>
-                                <p class="mt-1.5 text-[11px] text-slate-500">Requerente: ${escapeHtml(request.requestedBy || '—')} · ${formatAlertDate(request.requestedAt)}</p>
+                                <p class="mt-1.5 text-[11px] text-slate-500">Requerente: ${escapeHtml(formatRequesterName(request.requestedBy) || '—')} · ${formatAlertDate(request.requestedAt)}</p>
                             </div>
                         </div>
                         ${canReview ? `
@@ -6580,7 +6586,7 @@
                                     <p><span class="font-medium text-slate-500">Referência:</span> ${escapeHtml(item.catalog || '—')}</p>
                                     <p><span class="font-medium text-slate-500">Quantidade:</span> ${escapeHtml(item.qty || '—')}</p>
                                     <p><span class="font-medium text-slate-500">Laboratório:</span> ${escapeHtml(item.lab || '—')}</p>
-                                    <p><span class="font-medium text-slate-500">Requerente:</span> ${escapeHtml(item.requester || '—')}</p>
+                                    <p><span class="font-medium text-slate-500 block">Requerente:</span>${escapeHtml(formatRequesterName(item.requester) || '—')}</p>
                                 </div>
                                 <p class="mt-2 text-[11px] font-medium text-slate-600">Pedido de ${formatAlertDate(item.date)}</p>
                             </div>
@@ -6651,7 +6657,7 @@
                                     <p><span class="font-medium text-slate-500">Categoria:</span> ${escapeHtml(orderItem.category || '—')}</p>
                                     <p><span class="font-medium text-slate-500">Laboratório:</span> ${escapeHtml(orderItem.lab || '—')}</p>
                                     <p><span class="font-medium text-slate-500">Última quantidade pedida:</span> ${escapeHtml(orderItem.qty || '—')}</p>
-                                    <p><span class="font-medium text-slate-500">Requerente:</span> ${escapeHtml(orderItem.requester || '—')}</p>
+                                    <p><span class="font-medium text-slate-500 block">Requerente:</span>${escapeHtml(formatRequesterName(orderItem.requester) || '—')}</p>
                                 </div>
                                 <p class="mt-2 text-[11px] font-medium text-slate-600">Último pedido em ${formatAlertDate(lastOrderDate)}</p>
                             </div>
