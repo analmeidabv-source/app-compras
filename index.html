@@ -851,7 +851,7 @@
         </div>
     </div>
 
-    <div id="modalRececao" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div id="modalAddProduct" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
@@ -860,10 +860,10 @@
                     </div>
                     <div>
                         <h3 class="text-sm font-semibold text-slate-900">Adicionar Produtos</h3>
-                        <p id="modalRececaoSubtitle" class="text-xs text-slate-500 mt-0.5">Adicionar à Base de Dados</p>
+                        <p id="modalAddProductSubtitle" class="text-xs text-slate-500 mt-0.5">Adicionar à Base de Dados</p>
                     </div>
                 </div>
-                <button onclick="closeModal('modalRececao')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+                <button onclick="closeModal('modalAddProduct')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
             </div>
             <div class="p-5 grid gap-3 sm:grid-cols-2 bg-white max-h-[70vh] overflow-y-auto">
                 <div class="sm:col-span-2">
@@ -872,7 +872,7 @@
                 </div>
                 <div>
                     <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Referência</label>
-                    <input type="text" id="rececao_reference" placeholder="Ex.: WTR-0012" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-200">
+                    <input type="text" id="invAdd_reference" placeholder="Ex.: WTR-0012" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-200">
                 </div>
                 <div>
                     <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Marca / Fabricante</label>
@@ -884,7 +884,7 @@
                 </div>
             </div>
             <div class="px-5 py-4 border-t border-slate-100 bg-slate-50 flex gap-2">
-                <button onclick="closeModal('modalRececao')" class="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition">Cancelar</button>
+                <button onclick="closeModal('modalAddProduct')" class="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition">Cancelar</button>
                 <button id="invAdd_submit_btn" onclick="addProductToInventoryFromModal()" class="flex-1 rounded-lg bg-[#8B7EC8] px-3 py-2.5 text-sm font-medium text-white hover:bg-[#7A6BB0] transition">Adicionar</button>
             </div>
         </div>
@@ -1011,30 +1011,30 @@
         </div>
     </div>
 
-    <div id="modalRececao" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div id="modalConfirmarRececao" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-8">
             <h3 class="text-lg font-black uppercase italic mb-6 text-center">Confirmar Receção</h3>
 
-            <input type="hidden" id="rececao_index" value="">
+            <input type="hidden" id="receive_index" value="">
 
             <div class="space-y-4 mb-6">
                 <div>
                     <label class="text-[10px] font-bold uppercase text-slate-400">Quantidade recebida</label>
-                    <input type="text" id="rececao_quantity" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500" placeholder="Quantidade recebida">
+                    <input type="text" id="receive_quantity" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500" placeholder="Quantidade recebida">
                 </div>
                 <div>
                     <label class="text-[10px] font-bold uppercase text-slate-400">Data de receção</label>
-                    <input type="date" id="rececao_date" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500">
+                    <input type="date" id="receive_date" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500">
                 </div>
                 <div>
                     <label class="text-[10px] font-bold uppercase text-slate-400">Observações <span class="font-medium normal-case text-slate-400">(opcional)</span></label>
-                    <textarea id="rececao_notes" rows="4" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500" placeholder="Notas sobre a receção (opcional)"></textarea>
+                    <textarea id="receive_notes" rows="4" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500" placeholder="Notas sobre a receção (opcional)"></textarea>
                 </div>
             </div>
 
             <div class="flex gap-3">
-                <button type="button" onclick="closeReceptionModal()" class="flex-1 rounded-2xl border border-slate-300 py-3 font-bold">Cancelar</button>
-                <button type="button" onclick="saveRececao()" class="flex-1 rounded-2xl bg-emerald-600 py-3 text-white font-bold hover:bg-emerald-700">Confirmar Receção</button>
+                <button type="button" onclick="closeReceiveModal()" class="flex-1 rounded-2xl border border-slate-300 py-3 font-bold">Cancelar</button>
+                <button type="button" onclick="confirmReceive()" class="flex-1 rounded-2xl bg-emerald-600 py-3 text-white font-bold hover:bg-emerald-700">Confirmar Receção</button>
             </div>
         </div>
     </div>
@@ -2520,7 +2520,7 @@
         }
 
         function updateAddProductModalForProfile() {
-            const subtitle = document.getElementById('modalRececaoSubtitle');
+            const subtitle = document.getElementById('modalAddProductSubtitle');
             const submitBtn = document.getElementById('invAdd_submit_btn');
             const requestedByWrap = document.getElementById('invAdd_requested_by_wrap');
             const importBtn = document.getElementById('btnImportInventoryExcel');
@@ -4790,9 +4790,9 @@
                 return;
             }
 
-            if (novoStatus === 'Rececionado' && item.status !== 'Rececionado') {
+            if (novoStatus === 'Rececionado' && item.status === 'Compra Feita') {
                 if (selectEl) selectEl.value = item.status;
-                openReceptionModal(index);
+                openReceiveModal(index);
                 return;
             }
 
@@ -5673,31 +5673,31 @@
             }
         }
 
-        function openReceptionModal(index) {
+        function openReceiveModal(index) {
             const item = shoppingList[index];
             if (!item) return;
-            document.getElementById('rececao_index').value = index;
-            document.getElementById('rececao_quantity').value = getOrderedQuantity(item) || '';
-            document.getElementById('rececao_date').value = getTodayDateString();
-            document.getElementById('rececao_notes').value = item.receivedNotes || item.received_notes || '';
-            openModal('modalRececao');
+            document.getElementById('receive_index').value = index;
+            document.getElementById('receive_quantity').value = getOrderedQuantity(item) || '';
+            document.getElementById('receive_date').value = getTodayDateString();
+            document.getElementById('receive_notes').value = item.receivedNotes || item.received_notes || '';
+            openModal('modalConfirmarRececao');
         }
 
-        function closeReceptionModal() {
-            closeModal('modalRececao');
-            document.getElementById('rececao_index').value = '';
-            document.getElementById('rececao_quantity').value = '';
-            document.getElementById('rececao_date').value = '';
-            document.getElementById('rececao_notes').value = '';
+        function closeReceiveModal() {
+            closeModal('modalConfirmarRececao');
+            document.getElementById('receive_index').value = '';
+            document.getElementById('receive_quantity').value = '';
+            document.getElementById('receive_date').value = '';
+            document.getElementById('receive_notes').value = '';
         }
 
-        async function saveRececao() {
-            const index = document.getElementById('rececao_index').value;
+        async function confirmReceive() {
+            const index = document.getElementById('receive_index').value;
             if (index === '') return;
 
-            const receivedQuantity = document.getElementById('rececao_quantity').value.trim();
-            const receivedDate = document.getElementById('rececao_date').value.trim();
-            const receivedNotes = document.getElementById('rececao_notes').value.trim();
+            const receivedQuantity = document.getElementById('receive_quantity').value.trim();
+            const receivedDate = document.getElementById('receive_date').value.trim();
+            const receivedNotes = document.getElementById('receive_notes').value.trim();
 
             if (!receivedQuantity) return alert('Indique a quantidade recebida.');
             if (!receivedDate) return alert('Indique a data de receção.');
@@ -5740,7 +5740,7 @@
             }
 
             shoppingList = await loadShoppingList();
-            closeReceptionModal();
+            closeReceiveModal();
 
             if (currentPurchaseTab === 'submitted' || currentPurchaseTab === 'to-receive') {
                 switchTab('tab-compras-rececionados');
@@ -7326,7 +7326,7 @@
 
         function openAddProductToInventoryModal() {
             const nameEl = document.getElementById('invAdd_product_name');
-            const refEl = document.getElementById('rececao_reference');
+            const refEl = document.getElementById('invAdd_reference');
             const brandEl = document.getElementById('invAdd_brand');
             const requestedByEl = document.getElementById('invAdd_requested_by');
 
@@ -7336,12 +7336,12 @@
             if (requestedByEl) requestedByEl.value = '';
 
             updateAddProductModalForProfile();
-            openModal('modalRececao');
+            openModal('modalAddProduct');
         }
 
         async function addProductToInventoryFromModal() {
             const nameEl = document.getElementById('invAdd_product_name');
-            const refEl = document.getElementById('rececao_reference');
+            const refEl = document.getElementById('invAdd_reference');
             const brandEl = document.getElementById('invAdd_brand');
             const requestedByEl = document.getElementById('invAdd_requested_by');
 
@@ -7361,7 +7361,7 @@
                 const ok = await addInventoryProduct({ name, reference, brand });
                 if (!ok) return alert('Não foi possível adicionar o produto.');
 
-                closeModal('modalRececao');
+                closeModal('modalAddProduct');
                 await refreshInventoryFromSupabase();
                 return;
             }
@@ -7369,7 +7369,7 @@
             if (!requestedBy) return alert('Indique o nome do requerente.');
 
             submitProductForApproval({ name, reference, brand, requestedBy });
-            closeModal('modalRececao');
+            closeModal('modalAddProduct');
             alert('Pedido submetido para aprovação. Um responsável irá rever nos Alertas do Sistema.');
         }
 
