@@ -956,7 +956,7 @@
                 </div>
                 <div>
                     <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Requerente</label>
-                    <input type="text" id="req_user" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-200">
+                    <input type="text" id="req_user" readonly class="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-700 outline-none cursor-default">
                 </div>
                 <div id="req_cart_number_wrap" class="hidden">
                     <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Nº Carrinho</label>
@@ -4545,7 +4545,7 @@
             document.getElementById('req_purpose').value = '';
             document.getElementById('req_category').value = 'Padrões';
             document.getElementById('req_qty').value = '';
-            document.getElementById('req_user').value = '';
+            document.getElementById('req_user').value = getCurrentUserName();
             document.getElementById('req_urg').value = "false";
             updateOrderModalCartField(false);
             hideOrderProductSuggestions();
@@ -4571,7 +4571,8 @@
             document.getElementById('req_purpose').value = item.purpose || '';
             document.getElementById('req_category').value = item.category || 'Padrões';
             document.getElementById('req_qty').value = item.qty;
-            document.getElementById('req_user').value = item.requester.replace("Analista: ", "");
+            // Always show original requester; never replace with current user on edit
+            document.getElementById('req_user').value = String(item.requester || '').replace(/^Analista:\s*/i, '');
             document.getElementById('req_urg').value = item.urgent ? "true" : "false";
             const cartInput = document.getElementById('req_cart_number');
             if (cartInput) cartInput.value = item.cartNumber || '';
@@ -5323,7 +5324,6 @@
             const purpose = document.getElementById('req_purpose').value.trim();
             const category = document.getElementById('req_category').value.trim();
             const qty = document.getElementById('req_qty').value.trim();
-            const user = document.getElementById('req_user').value.trim();
             const isUrgent = document.getElementById('req_urg').value === "true";
             const index = document.getElementById('req_index').value;
 
@@ -5332,6 +5332,7 @@
             const lab = labs.join(', ');
 
             if (index !== "") {
+                // Edit: keep original requester — do not overwrite from current user
                 shoppingList[index].name = name;
                 shoppingList[index].brand = brand;
                 shoppingList[index].catalog = catalog;
@@ -5339,7 +5340,6 @@
                 shoppingList[index].purpose = purpose;
                 shoppingList[index].category = category;
                 shoppingList[index].qty = qty;
-                shoppingList[index].requester = "Analista: " + user;
                 shoppingList[index].urgent = isUrgent;
                 if (canViewManagerAlerts()) {
                     shoppingList[index].cartNumber = (document.getElementById('req_cart_number')?.value || '').trim();
@@ -5356,7 +5356,6 @@
                     purpose,
                     category,
                     qty,
-                    requester: "Analista: " + user,
                     urgent: isUrgent
                 };
                 if (canViewManagerAlerts()) {
@@ -5378,6 +5377,7 @@
                 closeModal('modalPedido');
                 return;
             } else {
+                const requesterName = getCurrentUserName();
                 const { error: insertError } = await supabaseClient
                     .from("shopping_list")
                     .insert([{
@@ -5389,7 +5389,7 @@
                         purpose,
                         category,
                         qty,
-                        requester: "Analista: " + user,
+                        requester: "Analista: " + requesterName,
                         urgent: isUrgent,
                         status: "Pendente",
                         comment: "",
