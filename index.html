@@ -267,7 +267,6 @@
                             <button id="btnImportInventoryExcel" onclick="document.getElementById('inventoryFileInput').click()" class="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-medium text-violet-700 hover:bg-violet-100 transition whitespace-nowrap">
                                 <i class="fa-solid fa-file-excel text-[11px]"></i> Importar Excel
                             </button>
-                            <button onclick="clearInventory()" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition whitespace-nowrap">Limpar</button>
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
@@ -2593,22 +2592,6 @@
             };
 
             reader.readAsArrayBuffer(file);
-        }
-
-        async function clearInventory() {
-            if (inventory.length === 0) return;
-            if (!confirm('Limpar todos os produtos do inventário?')) return;
-
-            for (const item of inventory) {
-                if (item?.id == null) continue;
-                const deleted = await deleteInventoryProduct(item.id);
-                if (!deleted) {
-                    await refreshInventoryFromSupabase();
-                    return alert('Não foi possível limpar todos os produtos.');
-                }
-            }
-
-            await refreshInventoryFromSupabase();
         }
 
         function openInventoryModal(index) {
