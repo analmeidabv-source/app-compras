@@ -1307,61 +1307,79 @@
     </div>
 
     <div id="modalCompraDetalhes" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden">
-            <div class="p-6 border-b bg-slate-50 flex justify-between items-center">
+        <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b bg-slate-50 flex justify-between items-center flex-shrink-0">
                 <h3 class="text-lg font-bold uppercase italic">💶 Detalhes de Compra</h3>
                 <button onclick="closeModal('modalCompraDetalhes')" class="text-2xl">&times;</button>
             </div>
 
-            <div class="p-6 space-y-5">
+            <div class="px-6 pt-4 flex-shrink-0 border-b border-slate-200">
+                <div class="flex gap-1" role="tablist" aria-label="Secções dos detalhes da compra">
+                    <button type="button" id="purchaseTabBtnDados" data-purchase-tab="dados" onclick="switchPurchaseDetailTab('dados')" class="purchase-detail-tab rounded-t-xl px-4 py-2.5 text-sm font-semibold border-b-2 border-[#8B7EC8] text-[#8B7EC8] bg-white">Dados da Compra</button>
+                    <button type="button" id="purchaseTabBtnCotacoes" data-purchase-tab="cotacoes" onclick="switchPurchaseDetailTab('cotacoes')" class="purchase-detail-tab rounded-t-xl px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700">Cotações</button>
+                    <button type="button" id="purchaseTabBtnHistorico" data-purchase-tab="historico" onclick="switchPurchaseDetailTab('historico')" class="purchase-detail-tab rounded-t-xl px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700">Histórico</button>
+                </div>
+            </div>
+
+            <div class="p-6 overflow-y-auto flex-1 min-h-0">
                 <input type="hidden" id="purchaseCostIndex" value="">
 
-                <div id="purchaseQuoteSummary" class="hidden rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-800">
-                    <p class="text-xs font-bold">🏆 Cotação selecionada</p>
-                    <p class="mt-1 text-sm"><span class="font-semibold">Fornecedor:</span> <span id="purchaseQuoteSupplier">—</span></p>
-                    <p class="text-sm"><span class="font-semibold">Valor:</span> <span id="purchaseQuotePrice">—</span></p>
-                </div>
-
-                <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Categoria do Produto</label>
-                    <div id="purchaseCategoryDisplay" class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-white text-slate-700 font-semibold">
-                        -
+                <div id="purchaseDetailPanelDados" class="purchase-detail-panel space-y-5">
+                    <div id="purchaseQuoteSummary" class="hidden rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-800">
+                        <p class="text-xs font-bold">🏆 Cotação selecionada</p>
+                        <p class="mt-1 text-sm"><span class="font-semibold">Fornecedor:</span> <span id="purchaseQuoteSupplier">—</span></p>
+                        <p class="text-sm"><span class="font-semibold">Valor:</span> <span id="purchaseQuotePrice">—</span></p>
                     </div>
-                </div>
 
-                <div>
-                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Nº Carrinho</label>
-                    <input type="text" id="purchaseCartNumber" placeholder="Ex: CR-2026-001" class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-slate-50">
-                </div>
+                    <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                        <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Categoria do Produto</label>
+                        <div id="purchaseCategoryDisplay" class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-white text-slate-700 font-semibold">
+                            -
+                        </div>
+                    </div>
 
-                <div class="grid gap-4 md:grid-cols-3">
                     <div>
-                        <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Preço Unitário (€)</label>
-                        <input type="number" id="purchaseUnitPrice" step="0.01" min="0" oninput="updatePurchaseTotalCost()" class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-slate-50">
+                        <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Nº Carrinho</label>
+                        <input type="text" id="purchaseCartNumber" placeholder="Ex: CR-2026-001" class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-slate-50">
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Custo Adicional (€)</label>
-                        <input type="number" id="purchaseAdditionalCost" step="0.01" min="0" oninput="updatePurchaseTotalCost()" class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-slate-50">
+
+                    <div class="grid gap-4 md:grid-cols-3">
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Preço Unitário (€)</label>
+                            <input type="number" id="purchaseUnitPrice" step="0.01" min="0" oninput="updatePurchaseTotalCost()" class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-slate-50">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Custo Adicional (€)</label>
+                            <input type="number" id="purchaseAdditionalCost" step="0.01" min="0" oninput="updatePurchaseTotalCost()" class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-slate-50">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Custo Total (€)</label>
+                            <input type="number" id="purchaseTotalCost" step="0.01" min="0" readonly class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-slate-100 text-slate-700 font-semibold">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Custo Total (€)</label>
-                        <input type="number" id="purchaseTotalCost" step="0.01" min="0" readonly class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-slate-100 text-slate-700 font-semibold">
+
+                    <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-bold text-slate-800">Distribuição por Centro de Custo</h4>
+                            <button type="button" onclick="addPurchaseAllocationRow()" class="rounded-2xl border border-violet-300 bg-violet-50 px-3 py-2 text-[11px] font-semibold text-violet-700">+ Adicionar centro</button>
+                        </div>
+
+                        <div id="purchaseAllocationRows" class="space-y-3"></div>
                     </div>
                 </div>
 
-                <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h4 class="text-sm font-bold text-slate-800">Distribuição por Centro de Custo</h4>
-                        <button type="button" onclick="addPurchaseAllocationRow()" class="rounded-2xl border border-violet-300 bg-violet-50 px-3 py-2 text-[11px] font-semibold text-violet-700">+ Adicionar centro</button>
-                    </div>
-
-                    <div id="purchaseAllocationRows" class="space-y-3"></div>
+                <div id="purchaseDetailPanelCotacoes" class="purchase-detail-panel hidden space-y-3">
+                    <div id="purchaseQuotesReadonly" class="space-y-3"></div>
                 </div>
 
-                <div class="flex gap-3 pt-2">
-                    <button onclick="closeModal('modalCompraDetalhes')" class="flex-1 rounded-2xl border border-slate-300 py-3 font-bold">Cancelar</button>
-                    <button onclick="confirmarCompraDetalhes()" class="flex-1 rounded-2xl bg-[#8B7EC8] py-3 text-white font-bold hover:bg-[#7A6BB0]">Guardar e Atualizar Budget</button>
+                <div id="purchaseDetailPanelHistorico" class="purchase-detail-panel hidden">
+                    <div id="purchaseHistoryTimeline" class="relative space-y-0"></div>
                 </div>
+            </div>
+
+            <div id="purchaseDetailFooter" class="px-6 pb-6 pt-2 flex gap-3 flex-shrink-0 border-t border-slate-100 bg-white">
+                <button onclick="closeModal('modalCompraDetalhes')" class="flex-1 rounded-2xl border border-slate-300 py-3 font-bold">Cancelar</button>
+                <button id="purchaseDetailSaveBtn" onclick="confirmarCompraDetalhes()" class="flex-1 rounded-2xl bg-[#8B7EC8] py-3 text-white font-bold hover:bg-[#7A6BB0]">Guardar e Atualizar Budget</button>
             </div>
         </div>
     </div>
@@ -4234,6 +4252,274 @@
             renderShopping();
         }
 
+        function formatPurchaseEuro(value) {
+            const n = typeof value === 'number' ? value : parseQuotePrice(value);
+            if (n == null) return null;
+            return `${Number(n).toFixed(2).replace('.', ',')} €`;
+        }
+
+        function toPurchaseDateKey(value) {
+            if (!value) return '';
+            const s = String(value).trim();
+            if (s.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+            return s;
+        }
+
+        function formatPurchaseTimelineDate(value) {
+            const key = toPurchaseDateKey(value);
+            if (!key) return '';
+            return formatAlertDate(key) || key;
+        }
+
+        function switchPurchaseDetailTab(tabId) {
+            const tabs = ['dados', 'cotacoes', 'historico'];
+            if (!tabs.includes(tabId)) tabId = 'dados';
+
+            tabs.forEach(id => {
+                const panel = document.getElementById(
+                    id === 'dados' ? 'purchaseDetailPanelDados'
+                        : id === 'cotacoes' ? 'purchaseDetailPanelCotacoes'
+                            : 'purchaseDetailPanelHistorico'
+                );
+                const btn = document.getElementById(
+                    id === 'dados' ? 'purchaseTabBtnDados'
+                        : id === 'cotacoes' ? 'purchaseTabBtnCotacoes'
+                            : 'purchaseTabBtnHistorico'
+                );
+                const active = id === tabId;
+                if (panel) panel.classList.toggle('hidden', !active);
+                if (btn) {
+                    btn.classList.toggle('border-[#8B7EC8]', active);
+                    btn.classList.toggle('text-[#8B7EC8]', active);
+                    btn.classList.toggle('bg-white', active);
+                    btn.classList.toggle('border-transparent', !active);
+                    btn.classList.toggle('text-slate-500', !active);
+                }
+            });
+
+            const saveBtn = document.getElementById('purchaseDetailSaveBtn');
+            if (saveBtn) saveBtn.classList.toggle('hidden', tabId !== 'dados');
+
+            if (tabId === 'historico' || tabId === 'cotacoes') {
+                const index = document.getElementById('purchaseCostIndex')?.value;
+                if (index !== '' && index != null && shoppingList[index]) {
+                    if (tabId === 'historico') renderPurchaseHistoryTimeline(shoppingList[index]);
+                    if (tabId === 'cotacoes') renderPurchaseQuotesReadonly(shoppingList[index]);
+                }
+            }
+        }
+
+        function renderPurchaseQuotesReadonly(item) {
+            const container = document.getElementById('purchaseQuotesReadonly');
+            if (!container) return;
+
+            const quotes = getOrderQuotes(item).filter(q =>
+                (q.supplier || '').trim() || (q.date || '').trim() || (q.price != null && String(q.price).trim()) || (q.note || '').trim()
+            );
+            const winnerSupplier = String(item?.selectedSupplier ?? item?.selected_supplier ?? '').trim().toLowerCase();
+            const quoteDate = item?.quoteDate || item?.quote_date;
+
+            if (!quotes.length && !quoteDate && !winnerSupplier) {
+                container.innerHTML = `
+                    <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+                        <p class="text-sm text-slate-500">Sem cotações registadas para este pedido.</p>
+                    </div>`;
+                return;
+            }
+
+            const sorted = [...quotes].sort((a, b) =>
+                toPurchaseDateKey(a.date).localeCompare(toPurchaseDateKey(b.date))
+            );
+
+            let html = '';
+            if (quoteDate) {
+                html += `
+                    <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-amber-700">Pedido de cotação</p>
+                        <p class="mt-1 text-sm font-semibold">${escapeHtml(formatPurchaseTimelineDate(quoteDate))}</p>
+                    </div>`;
+            }
+
+            if (sorted.length) {
+                html += `<p class="text-xs font-semibold text-slate-500">${sorted.length} fornecedor${sorted.length === 1 ? '' : 'es'}</p>`;
+                html += sorted.map(q => {
+                    const supplier = String(q.supplier || '').trim() || 'Fornecedor';
+                    const isWinner = winnerSupplier && supplier.toLowerCase() === winnerSupplier;
+                    const priceLabel = formatPurchaseEuro(q.price);
+                    const note = String(q.note || '').trim();
+                    const dateLabel = formatPurchaseTimelineDate(q.date);
+                    return `
+                        <div class="rounded-2xl border ${isWinner ? 'border-emerald-400 bg-emerald-50/80 ring-1 ring-emerald-200' : 'border-slate-200 bg-white'} px-4 py-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-slate-800">${escapeHtml(supplier)}${isWinner ? ' 🏆' : ''}</p>
+                                    ${dateLabel ? `<p class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(dateLabel)}</p>` : ''}
+                                </div>
+                                ${priceLabel ? `<p class="text-sm font-bold ${isWinner ? 'text-emerald-700' : 'text-slate-800'} whitespace-nowrap">${escapeHtml(priceLabel)}</p>` : ''}
+                            </div>
+                            ${note ? `<p class="mt-2 text-xs text-slate-600">${escapeHtml(note)}</p>` : ''}
+                            ${isWinner ? `<p class="mt-2 text-[10px] font-bold uppercase tracking-wide text-emerald-700">Cotação selecionada</p>` : ''}
+                        </div>`;
+                }).join('');
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderPurchaseHistoryTimeline(item) {
+            const container = document.getElementById('purchaseHistoryTimeline');
+            if (!container) return;
+
+            const events = [];
+            const createdRaw = item?.created_at || item?.createdAt || item?.date;
+            const createdKey = toPurchaseDateKey(createdRaw);
+            if (createdKey) {
+                events.push({
+                    sortKey: createdKey,
+                    order: 1,
+                    title: 'Pedido criado',
+                    detail: formatPurchaseTimelineDate(createdKey),
+                    accent: 'violet'
+                });
+            }
+
+            const quoteDateRaw = item?.quoteDate || item?.quote_date;
+            const quoteDateKey = toPurchaseDateKey(quoteDateRaw);
+            if (quoteDateKey) {
+                events.push({
+                    sortKey: quoteDateKey,
+                    order: 2,
+                    title: 'Pedido de cotação',
+                    detail: formatPurchaseTimelineDate(quoteDateKey),
+                    accent: 'amber'
+                });
+            }
+
+            const quotes = getOrderQuotes(item).filter(q =>
+                (q.supplier || '').trim() || (q.date || '').trim() || (q.price != null && String(q.price).trim()) || (q.note || '').trim()
+            );
+            const winnerSupplier = String(item?.selectedSupplier ?? item?.selected_supplier ?? '').trim();
+            const winnerPrice = formatPurchaseEuro(item?.selectedPrice ?? item?.selected_price);
+
+            if (quotes.length) {
+                const sortedQuotes = [...quotes].sort((a, b) =>
+                    toPurchaseDateKey(a.date).localeCompare(toPurchaseDateKey(b.date))
+                );
+                const quoteSort = toPurchaseDateKey(sortedQuotes[0]?.date) || quoteDateKey || createdKey || '9999-99-99';
+                const quotesHtml = sortedQuotes.map(q => {
+                    const supplier = String(q.supplier || '').trim() || 'Fornecedor';
+                    const isWinner = winnerSupplier && supplier.toLowerCase() === winnerSupplier.toLowerCase();
+                    const priceLabel = formatPurchaseEuro(q.price);
+                    const note = String(q.note || '').trim();
+                    const dateLabel = formatPurchaseTimelineDate(q.date);
+                    return `
+                        <div class="rounded-xl border ${isWinner ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-slate-50'} px-3 py-2.5">
+                            <div class="flex items-start justify-between gap-2">
+                                <p class="text-xs font-semibold ${isWinner ? 'text-emerald-800' : 'text-slate-800'}">${escapeHtml(supplier)}${isWinner ? ' 🏆' : ''}</p>
+                                ${priceLabel ? `<p class="text-xs font-bold ${isWinner ? 'text-emerald-700' : 'text-slate-700'}">${escapeHtml(priceLabel)}</p>` : ''}
+                            </div>
+                            ${dateLabel ? `<p class="text-[10px] text-slate-500 mt-0.5">${escapeHtml(dateLabel)}</p>` : ''}
+                            ${note ? `<p class="text-[11px] text-slate-600 mt-1">${escapeHtml(note)}</p>` : ''}
+                        </div>`;
+                }).join('');
+
+                events.push({
+                    sortKey: quoteSort,
+                    order: 3,
+                    title: `Cotações · ${quotes.length} fornecedor${quotes.length === 1 ? '' : 'es'}`,
+                    detailHtml: `<div class="mt-2 space-y-2">${quotesHtml}</div>`,
+                    accent: 'amber'
+                });
+            } else if (winnerSupplier) {
+                events.push({
+                    sortKey: quoteDateKey || createdKey || '9999-99-98',
+                    order: 3,
+                    title: 'Fornecedor selecionado 🏆',
+                    detail: `${winnerSupplier}${winnerPrice ? ` · ${winnerPrice}` : ''}`,
+                    accent: 'emerald'
+                });
+            }
+
+            const purchaseDateRaw = item?.purchaseDate || item?.purchase_date;
+            const purchaseDateKey = toPurchaseDateKey(purchaseDateRaw);
+            if (purchaseDateKey) {
+                const by = String(item?.purchasedBy || '').trim();
+                events.push({
+                    sortKey: purchaseDateKey,
+                    order: 4,
+                    title: 'Compra efetuada',
+                    detail: `${formatPurchaseTimelineDate(purchaseDateKey)}${by ? ` · ${by}` : ''}`,
+                    accent: 'sky'
+                });
+            }
+
+            if (item?.status) {
+                const statusSort = purchaseDateKey || quoteDateKey || createdKey || '9999-99-99';
+                events.push({
+                    sortKey: statusSort,
+                    order: 5,
+                    title: 'Estado atual',
+                    detail: String(item.status),
+                    accent: 'slate'
+                });
+            }
+
+            const receivedRaw = item?.receivedAt || item?.received_at;
+            const receivedKey = toPurchaseDateKey(receivedRaw);
+            if (receivedKey) {
+                const by = String(item?.receivedBy || '').trim();
+                events.push({
+                    sortKey: receivedKey,
+                    order: 6,
+                    title: 'Receção no laboratório',
+                    detail: `${formatPurchaseTimelineDate(receivedKey)}${by ? ` · ${by}` : ''}`,
+                    accent: 'emerald'
+                });
+            }
+
+            events.sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)) || (a.order - b.order));
+
+            if (!events.length) {
+                container.innerHTML = `
+                    <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+                        <p class="text-sm text-slate-500">Sem histórico disponível para este pedido.</p>
+                    </div>`;
+                return;
+            }
+
+            const accentDot = {
+                violet: 'bg-violet-500 ring-violet-100',
+                amber: 'bg-amber-500 ring-amber-100',
+                emerald: 'bg-emerald-500 ring-emerald-100',
+                sky: 'bg-sky-500 ring-sky-100',
+                slate: 'bg-slate-400 ring-slate-100'
+            };
+            const accentCard = {
+                violet: 'border-violet-200',
+                amber: 'border-amber-200',
+                emerald: 'border-emerald-300',
+                sky: 'border-sky-200',
+                slate: 'border-slate-200'
+            };
+
+            container.innerHTML = `
+                <div class="relative pl-6">
+                    <div class="absolute left-[9px] top-2 bottom-2 w-px bg-slate-200"></div>
+                    <div class="space-y-4">
+                        ${events.map(ev => `
+                            <div class="relative">
+                                <span class="absolute -left-6 top-3 h-2.5 w-2.5 rounded-full ring-4 ${accentDot[ev.accent] || accentDot.slate}"></span>
+                                <div class="rounded-2xl border bg-white px-4 py-3 shadow-sm ${accentCard[ev.accent] || accentCard.slate}">
+                                    <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">${escapeHtml(ev.title)}</p>
+                                    ${ev.detail ? `<p class="mt-1 text-sm font-semibold text-slate-800">${escapeHtml(ev.detail)}</p>` : ''}
+                                    ${ev.detailHtml || ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+        }
+
         function openPurchaseCostModal(index) {
             const item = shoppingList[index];
             document.getElementById('purchaseCostIndex').value = index;
@@ -4275,6 +4561,9 @@
             }
 
             addPurchaseAllocationRow();
+            renderPurchaseQuotesReadonly(item);
+            renderPurchaseHistoryTimeline(item);
+            switchPurchaseDetailTab('dados');
             openModal('modalCompraDetalhes');
         }
 
