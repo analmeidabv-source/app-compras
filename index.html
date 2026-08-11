@@ -1012,37 +1012,8 @@
         </div>
     </div>
 
-    <div id="modalCotacao" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-shrink-0">
-                <div class="flex items-center gap-3 min-w-0">
-                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 border border-amber-100">
-                        <i class="fa-solid fa-file-invoice-dollar text-amber-600 text-sm"></i>
-                    </div>
-                    <h3 class="text-sm font-semibold text-slate-900 truncate">Pedido de Cotação</h3>
-                </div>
-                <button onclick="closeQuoteModal()" class="text-slate-400 hover:text-slate-600 text-xl leading-none flex-shrink-0">&times;</button>
-            </div>
-
-            <input type="hidden" id="quote_index" value="">
-
-            <div class="p-5 space-y-3 overflow-y-auto flex-1">
-                <div>
-                    <div class="flex items-center justify-between gap-2 mb-1.5">
-                        <label class="block text-[10px] font-semibold uppercase text-slate-400">Fornecedores e datas</label>
-                        <button type="button" onclick="addOrderQuoteRow()" class="text-[11px] font-medium text-amber-700 hover:text-amber-800">+ Adicionar fornecedor</button>
-                    </div>
-                    <div id="quote_list" class="space-y-2"></div>
-                    <p class="text-[10px] text-slate-400 mt-1.5">Em cada linha indique o fornecedor e a data em que pediu a cotação. Valor e nota são opcionais.</p>
-                </div>
-            </div>
-
-            <div class="px-5 py-4 border-t border-slate-100 bg-slate-50 flex gap-2 flex-shrink-0">
-                <button onclick="closeQuoteModal()" class="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition">Voltar</button>
-                <button onclick="saveQuoteModal()" class="flex-1 rounded-lg bg-amber-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-amber-700 transition">Guardar cotação</button>
-            </div>
-        </div>
-    </div>
+    <!-- Quote editing UI lives in modalCompraDetalhes → tab Cotações (keeps #quote_list / #quote_index for saveQuoteModal). -->
+    <div id="modalCotacao" class="hidden" aria-hidden="true"></div>
 
     <div id="modalInventory" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
@@ -1310,7 +1281,7 @@
         <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div class="p-6 border-b bg-slate-50 flex justify-between items-center flex-shrink-0">
                 <h3 class="text-lg font-bold uppercase italic">💶 Detalhes de Compra</h3>
-                <button onclick="closeModal('modalCompraDetalhes')" class="text-2xl">&times;</button>
+                <button type="button" onclick="closePurchaseDetailModal()" class="text-2xl">&times;</button>
             </div>
 
             <div class="px-6 pt-4 flex-shrink-0 border-b border-slate-200">
@@ -1369,7 +1340,16 @@
                 </div>
 
                 <div id="purchaseDetailPanelCotacoes" class="purchase-detail-panel hidden space-y-3">
-                    <div id="purchaseQuotesReadonly" class="space-y-3"></div>
+                    <input type="hidden" id="quote_index" value="">
+                    <div id="purchaseQuotesEditable" class="space-y-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <label class="block text-[10px] font-semibold uppercase text-slate-400">Fornecedores e datas</label>
+                            <button type="button" id="purchaseQuotesAddBtn" onclick="addOrderQuoteRow()" class="text-[11px] font-medium text-amber-700 hover:text-amber-800">+ Adicionar fornecedor</button>
+                        </div>
+                        <div id="quote_list" class="space-y-2"></div>
+                        <p id="purchaseQuotesEditHint" class="text-[10px] text-slate-400">Em cada linha indique o fornecedor e a data em que pediu a cotação. Valor e nota são opcionais.</p>
+                    </div>
+                    <div id="purchaseQuotesReadonly" class="space-y-3 hidden"></div>
                 </div>
 
                 <div id="purchaseDetailPanelHistorico" class="purchase-detail-panel hidden">
@@ -1378,8 +1358,9 @@
             </div>
 
             <div id="purchaseDetailFooter" class="px-6 pb-6 pt-2 flex gap-3 flex-shrink-0 border-t border-slate-100 bg-white">
-                <button onclick="closeModal('modalCompraDetalhes')" class="flex-1 rounded-2xl border border-slate-300 py-3 font-bold">Cancelar</button>
-                <button id="purchaseDetailSaveBtn" onclick="confirmarCompraDetalhes()" class="flex-1 rounded-2xl bg-[#8B7EC8] py-3 text-white font-bold hover:bg-[#7A6BB0]">Guardar e Atualizar Budget</button>
+                <button type="button" onclick="closePurchaseDetailModal()" class="flex-1 rounded-2xl border border-slate-300 py-3 font-bold">Cancelar</button>
+                <button type="button" id="purchaseQuoteSaveBtn" onclick="saveQuoteModal()" class="hidden flex-1 rounded-2xl bg-amber-600 py-3 text-white font-bold hover:bg-amber-700">Guardar cotação</button>
+                <button type="button" id="purchaseDetailSaveBtn" onclick="confirmarCompraDetalhes()" class="flex-1 rounded-2xl bg-[#8B7EC8] py-3 text-white font-bold hover:bg-[#7A6BB0]">Guardar e Atualizar Budget</button>
             </div>
         </div>
     </div>
@@ -3762,9 +3743,8 @@
             });
             if (tooltipParts.length === 0 && dateLabel) tooltipParts.push(`Data: ${dateLabel}`);
             const title = tooltipParts.length ? tooltipParts.join('\n') : 'Pedido de cotação';
-            const canEdit = typeof index === 'number' && isOrderStatusEditable(item.status);
-            const clickAttr = canEdit
-                ? `onclick="openQuoteModal(${index})" class="cursor-pointer inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800 hover:bg-amber-100"`
+            const clickAttr = typeof index === 'number'
+                ? `onclick="openOrderDetailsModal(${index}, { initialTab: 'cotacoes' })" class="cursor-pointer inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800 hover:bg-amber-100"`
                 : `class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800"`;
 
             return `<span title="${escapeHtml(title)}" ${clickAttr}>${escapeHtml(label)}</span>`;
@@ -3999,39 +3979,199 @@
             return { quoteDate, quotes, ...selection };
         }
 
-        function openQuoteModal(index) {
+        let purchaseModalMode = 'view'; // 'quote' | 'purchase' | 'view'
+        let purchaseModalActiveTab = 'dados';
+
+        function isPurchaseQuotesEditableStatus(status) {
+            return status === 'Pedido de Cotação';
+        }
+
+        function populatePurchaseQuoteEditor(item) {
+            const list = document.getElementById('quote_list');
+            if (!list) return;
+
+            list.innerHTML = '';
+            list.dataset.skipCompare = '1';
+            const quotes = getOrderQuotes(item);
+            if (quotes.length > 0) {
+                quotes.forEach(q => addOrderQuoteRow({
+                    ...q,
+                    date: q.date || item.quoteDate || getTodayDateString()
+                }));
+            } else {
+                addOrderQuoteRow({ date: item.quoteDate || getTodayDateString() });
+            }
+            delete list.dataset.skipCompare;
+            restoreQuoteSelectedSupplier(item);
+            updateQuotePriceComparison();
+        }
+
+        function setPurchaseQuotesEditable(editable) {
+            const editWrap = document.getElementById('purchaseQuotesEditable');
+            const readWrap = document.getElementById('purchaseQuotesReadonly');
+            const addBtn = document.getElementById('purchaseQuotesAddBtn');
+            const hint = document.getElementById('purchaseQuotesEditHint');
+
+            if (editWrap) editWrap.classList.toggle('hidden', !editable);
+            if (readWrap) readWrap.classList.toggle('hidden', editable);
+            if (addBtn) addBtn.classList.toggle('hidden', !editable);
+            if (hint) hint.classList.toggle('hidden', !editable);
+
+            const list = document.getElementById('quote_list');
+            if (list && editable) {
+                list.querySelectorAll('input, button, select, textarea').forEach(el => {
+                    if (el.type === 'hidden') return;
+                    el.disabled = false;
+                    if (el.tagName === 'BUTTON') el.classList.remove('pointer-events-none', 'opacity-40');
+                });
+            }
+        }
+
+        function updatePurchaseDetailFooter(tabId = purchaseModalActiveTab) {
+            const purchaseSave = document.getElementById('purchaseDetailSaveBtn');
+            const quoteSave = document.getElementById('purchaseQuoteSaveBtn');
+            if (purchaseSave) {
+                purchaseSave.classList.toggle('hidden', purchaseModalMode !== 'purchase' || tabId !== 'dados');
+            }
+            if (quoteSave) {
+                quoteSave.classList.toggle('hidden', purchaseModalMode !== 'quote' || tabId !== 'cotacoes');
+            }
+        }
+
+        function setPurchaseDadosEditable(editable) {
+            const panel = document.getElementById('purchaseDetailPanelDados');
+            if (!panel) return;
+            panel.querySelectorAll('input, select, button, textarea').forEach(el => {
+                if (el.id === 'purchaseTotalCost') {
+                    el.readOnly = true;
+                    return;
+                }
+                if (el.tagName === 'BUTTON') {
+                    el.classList.toggle('hidden', !editable);
+                    el.disabled = !editable;
+                    return;
+                }
+                el.disabled = !editable;
+                el.classList.toggle('bg-slate-100', !editable);
+            });
+        }
+
+        function ensurePurchaseDetailTabsVisible() {
+            ['purchaseTabBtnDados', 'purchaseTabBtnCotacoes', 'purchaseTabBtnHistorico'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.classList.remove('hidden');
+            });
+        }
+
+        function closePurchaseDetailModal() {
+            closeModal('modalCompraDetalhes');
+            document.getElementById('quote_index').value = '';
+            document.getElementById('purchaseCostIndex').value = '';
+            const list = document.getElementById('quote_list');
+            if (list) list.innerHTML = '';
+            purchaseModalMode = 'view';
+            renderShopping();
+        }
+
+        function openOrderDetailsModal(index, options = {}) {
             const item = shoppingList[index];
             if (!item) return;
 
+            const forceMode = options.mode;
+            const quotesEditable = forceMode === 'quote'
+                || (!forceMode && isPurchaseQuotesEditableStatus(item.status));
+            const isPurchase = forceMode === 'purchase';
+
+            purchaseModalMode = isPurchase ? 'purchase' : (quotesEditable ? 'quote' : 'view');
+
+            document.getElementById('purchaseCostIndex').value = index;
             document.getElementById('quote_index').value = index;
 
-            const list = document.getElementById('quote_list');
-            if (list) {
-                list.innerHTML = '';
-                list.dataset.skipCompare = '1';
-                const quotes = getOrderQuotes(item);
-                if (quotes.length > 0) {
-                    quotes.forEach(q => addOrderQuoteRow({
-                        ...q,
-                        date: q.date || item.quoteDate || getTodayDateString()
-                    }));
+            // Purchase-confirm flow starts blank (winner price may prefill); view/quote reuse saved costs when present
+            if (isPurchase) {
+                document.getElementById('purchaseUnitPrice').value = '';
+                document.getElementById('purchaseAdditionalCost').value = '';
+                document.getElementById('purchaseTotalCost').value = '';
+            } else {
+                document.getElementById('purchaseUnitPrice').value = item?.purchaseCost?.unitPrice ?? '';
+                document.getElementById('purchaseAdditionalCost').value = item?.purchaseCost?.additionalCost ?? '';
+                document.getElementById('purchaseTotalCost').value = item?.purchaseCost?.totalCost ?? '';
+            }
+            document.getElementById('purchaseCartNumber').value = item.cartNumber || '';
+            document.getElementById('purchaseAllocationRows').innerHTML = '';
+            document.getElementById('purchaseCategoryDisplay').textContent =
+                item.category || item.purchaseCategory || activeBudgetCategory || 'Padrões';
+
+            const winnerSupplier = String(item?.selectedSupplier ?? item?.selected_supplier ?? '').trim();
+            const winnerPrice = parseQuotePrice(item?.selectedPrice ?? item?.selected_price);
+
+            const quoteSummary = document.getElementById('purchaseQuoteSummary');
+            if (quoteSummary) {
+                if (winnerSupplier) {
+                    document.getElementById('purchaseQuoteSupplier').textContent = winnerSupplier;
+                    document.getElementById('purchaseQuotePrice').textContent =
+                        winnerPrice != null
+                            ? `${Number(winnerPrice).toFixed(2).replace('.', ',')} €`
+                            : '—';
+                    quoteSummary.classList.remove('hidden');
                 } else {
-                    addOrderQuoteRow({ date: item.quoteDate || getTodayDateString() });
+                    document.getElementById('purchaseQuoteSupplier').textContent = '—';
+                    document.getElementById('purchaseQuotePrice').textContent = '—';
+                    quoteSummary.classList.add('hidden');
                 }
-                delete list.dataset.skipCompare;
-                restoreQuoteSelectedSupplier(item);
-                updateQuotePriceComparison();
             }
 
-            openModal('modalCotacao');
+            const supplierInput = document.getElementById('purchaseSupplier');
+            if (supplierInput) {
+                supplierInput.value = winnerSupplier || '';
+            }
+
+            if (isPurchase && winnerPrice != null) {
+                document.getElementById('purchaseUnitPrice').value = winnerPrice;
+                updatePurchaseTotalCost();
+            } else if (!isPurchase && !document.getElementById('purchaseTotalCost').value && (document.getElementById('purchaseUnitPrice').value || document.getElementById('purchaseAdditionalCost').value)) {
+                updatePurchaseTotalCost();
+            }
+
+            addPurchaseAllocationRow();
+            if (!isPurchase && Array.isArray(item?.purchaseCost?.allocations) && item.purchaseCost.allocations.length) {
+                document.getElementById('purchaseAllocationRows').innerHTML = '';
+                item.purchaseCost.allocations.forEach(alloc => {
+                    addPurchaseAllocationRow();
+                    const row = document.getElementById('purchaseAllocationRows').lastElementChild;
+                    if (!row) return;
+                    const select = row.querySelector('select');
+                    const percentInput = row.querySelector('input[type="number"]');
+                    if (select && alloc.center) select.value = alloc.center;
+                    if (percentInput && alloc.percent != null) percentInput.value = alloc.percent;
+                });
+            }
+
+            setPurchaseQuotesEditable(quotesEditable);
+            if (quotesEditable) {
+                populatePurchaseQuoteEditor(item);
+            } else {
+                const list = document.getElementById('quote_list');
+                if (list) list.innerHTML = '';
+                renderPurchaseQuotesReadonly(item);
+            }
+
+            renderPurchaseHistoryTimeline(item);
+            setPurchaseDadosEditable(isPurchase);
+            ensurePurchaseDetailTabsVisible();
+
+            const initialTab = options.initialTab || (isPurchase ? 'dados' : (quotesEditable ? 'cotacoes' : 'dados'));
+            switchPurchaseDetailTab(initialTab);
+            openModal('modalCompraDetalhes');
+        }
+
+        function openQuoteModal(index) {
+            // Pedido de Cotação flow: always editable Cotações tab inside Detalhes da Compra
+            openOrderDetailsModal(index, { mode: 'quote', initialTab: 'cotacoes' });
         }
 
         function closeQuoteModal() {
-            closeModal('modalCotacao');
-            document.getElementById('quote_index').value = '';
-            const list = document.getElementById('quote_list');
-            if (list) list.innerHTML = '';
-            renderShopping();
+            closePurchaseDetailModal();
         }
 
         async function saveQuoteModal() {
@@ -4073,7 +4213,7 @@
             }
 
             shoppingList = await loadShoppingList();
-            closeModal('modalCotacao');
+            closePurchaseDetailModal();
             document.getElementById('quote_index').value = '';
             renderShopping();
         }
@@ -4274,6 +4414,8 @@
         function switchPurchaseDetailTab(tabId) {
             const tabs = ['dados', 'cotacoes', 'historico'];
             if (!tabs.includes(tabId)) tabId = 'dados';
+            purchaseModalActiveTab = tabId;
+            ensurePurchaseDetailTabsVisible();
 
             tabs.forEach(id => {
                 const panel = document.getElementById(
@@ -4289,6 +4431,7 @@
                 const active = id === tabId;
                 if (panel) panel.classList.toggle('hidden', !active);
                 if (btn) {
+                    btn.classList.remove('hidden');
                     btn.classList.toggle('border-[#8B7EC8]', active);
                     btn.classList.toggle('text-[#8B7EC8]', active);
                     btn.classList.toggle('bg-white', active);
@@ -4297,14 +4440,17 @@
                 }
             });
 
-            const saveBtn = document.getElementById('purchaseDetailSaveBtn');
-            if (saveBtn) saveBtn.classList.toggle('hidden', tabId !== 'dados');
+            updatePurchaseDetailFooter(tabId);
 
             if (tabId === 'historico' || tabId === 'cotacoes') {
                 const index = document.getElementById('purchaseCostIndex')?.value;
                 if (index !== '' && index != null && shoppingList[index]) {
                     if (tabId === 'historico') renderPurchaseHistoryTimeline(shoppingList[index]);
-                    if (tabId === 'cotacoes') renderPurchaseQuotesReadonly(shoppingList[index]);
+                    // Only refresh read-only quotes when not in editable Pedido de Cotação mode
+                    if (tabId === 'cotacoes' && purchaseModalMode !== 'quote') {
+                        setPurchaseQuotesEditable(false);
+                        renderPurchaseQuotesReadonly(shoppingList[index]);
+                    }
                 }
             }
         }
@@ -4521,50 +4667,8 @@
         }
 
         function openPurchaseCostModal(index) {
-            const item = shoppingList[index];
-            document.getElementById('purchaseCostIndex').value = index;
-            document.getElementById('purchaseUnitPrice').value = '';
-            document.getElementById('purchaseAdditionalCost').value = '';
-            document.getElementById('purchaseTotalCost').value = '';
-            document.getElementById('purchaseCartNumber').value = item.cartNumber || '';
-            document.getElementById('purchaseAllocationRows').innerHTML = '';
-            document.getElementById('purchaseCategoryDisplay').textContent =
-                item.category || item.purchaseCategory || activeBudgetCategory || 'Padrões';
-
-            const winnerSupplier = String(item?.selectedSupplier ?? item?.selected_supplier ?? '').trim();
-            const winnerPrice = parseQuotePrice(item?.selectedPrice ?? item?.selected_price);
-
-            const quoteSummary = document.getElementById('purchaseQuoteSummary');
-            if (quoteSummary) {
-                if (winnerSupplier) {
-                    document.getElementById('purchaseQuoteSupplier').textContent = winnerSupplier;
-                    document.getElementById('purchaseQuotePrice').textContent =
-                        winnerPrice != null
-                            ? `${Number(winnerPrice).toFixed(2).replace('.', ',')} €`
-                            : '—';
-                    quoteSummary.classList.remove('hidden');
-                } else {
-                    document.getElementById('purchaseQuoteSupplier').textContent = '—';
-                    document.getElementById('purchaseQuotePrice').textContent = '—';
-                    quoteSummary.classList.add('hidden');
-                }
-            }
-
-            const supplierInput = document.getElementById('purchaseSupplier');
-            if (supplierInput) {
-                supplierInput.value = winnerSupplier || '';
-            }
-
-            if (winnerPrice != null) {
-                document.getElementById('purchaseUnitPrice').value = winnerPrice;
-                updatePurchaseTotalCost();
-            }
-
-            addPurchaseAllocationRow();
-            renderPurchaseQuotesReadonly(item);
-            renderPurchaseHistoryTimeline(item);
-            switchPurchaseDetailTab('dados');
-            openModal('modalCompraDetalhes');
+            // Compra Feita flow: Dados editable; Cotações + Histórico always visible (quotes read-only)
+            openOrderDetailsModal(index, { mode: 'purchase', initialTab: 'dados' });
         }
 
         function updatePurchaseTotalCost() {
@@ -4695,7 +4799,7 @@
             shoppingList = await loadShoppingList();
             renderShopping();
             renderBudgets();
-            closeModal('modalCompraDetalhes');
+            closePurchaseDetailModal();
         }
 
         async function fazerPedido() {
@@ -5236,6 +5340,9 @@
                                     : (item.comment ? `<p class="italic text-slate-500 line-clamp-2">${item.comment}</p>` : '<span class="text-slate-400">Sem comentário</span>')}
                             </td>
                             <td class="flex flex-wrap gap-2">
+                                <button type="button" title="Detalhes da compra" onclick="openOrderDetailsModal(${item.originalIndex})" class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-slate-500 hover:text-slate-700 hover:border-slate-300 transition">
+                                    <i class="fa-solid fa-receipt text-xs"></i>
+                                </button>
                                 <button onclick="editarPedido(${item.originalIndex})" class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-slate-500 hover:text-slate-700 hover:border-slate-300 transition">
                                     <i class="fa-solid fa-pen-to-square text-xs"></i>
                                 </button>
