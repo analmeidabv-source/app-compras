@@ -1011,6 +1011,34 @@
         </div>
     </div>
 
+    <div id="modalRececao" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-8">
+            <h3 class="text-lg font-black uppercase italic mb-6 text-center">Confirmar Receção</h3>
+
+            <input type="hidden" id="rececao_index" value="">
+
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-slate-400">Quantidade recebida</label>
+                    <input type="text" id="rececao_quantity" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500" placeholder="Quantidade recebida">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-slate-400">Data de receção</label>
+                    <input type="date" id="rececao_date" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-slate-400">Observações <span class="font-medium normal-case text-slate-400">(opcional)</span></label>
+                    <textarea id="rececao_notes" rows="4" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500" placeholder="Notas sobre a receção (opcional)"></textarea>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button type="button" onclick="closeReceptionModal()" class="flex-1 rounded-2xl border border-slate-300 py-3 font-bold">Cancelar</button>
+                <button type="button" onclick="saveRececao()" class="flex-1 rounded-2xl bg-emerald-600 py-3 text-white font-bold hover:bg-emerald-700">Confirmar Receção</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Quote editing UI lives in modalCompraDetalhes → tab Cotações (keeps #quote_list / #quote_index for saveQuoteModal). -->
     <div id="modalCotacao" class="hidden" aria-hidden="true"></div>
 
@@ -1333,6 +1361,25 @@
                         <p class="text-xs font-bold">🏆 Cotação selecionada</p>
                         <p class="mt-1 text-sm"><span class="font-semibold">Fornecedor:</span> <span id="purchaseQuoteSupplier">—</span></p>
                         <p class="text-sm"><span class="font-semibold">Valor:</span> <span id="purchaseQuotePrice">—</span></p>
+                    </div>
+
+                    <div id="purchaseReceptionSummary" class="hidden rounded-2xl border border-teal-300 bg-teal-50 px-4 py-3 text-teal-900 space-y-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="text-xs font-bold uppercase tracking-wide">Receção</p>
+                            <span id="purchaseReceptionPartialBadge" class="hidden inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">Receção parcial</span>
+                        </div>
+                        <div id="purchaseReceptionQtyCompare" class="hidden grid gap-1.5 text-sm sm:grid-cols-3">
+                            <p><span class="font-semibold">Quantidade pedida:</span> <span id="purchaseReceptionOrderedQty">—</span></p>
+                            <p><span class="font-semibold">Quantidade recebida:</span> <span id="purchaseReceptionReceivedQty">—</span></p>
+                            <p><span class="font-semibold">Quantidade em falta:</span> <span id="purchaseReceptionMissingQty">—</span></p>
+                        </div>
+                        <div class="grid gap-1.5 text-sm">
+                            <p class="purchase-reception-received-only"><span class="font-semibold">Quantidade recebida:</span> <span id="purchaseReceptionQty">—</span></p>
+                            <p><span class="font-semibold">Data da receção:</span> <span id="purchaseReceptionDate">—</span></p>
+                            <p><span class="font-semibold">Rececionado por:</span> <span id="purchaseReceptionBy">—</span></p>
+                            <p><span class="font-semibold">Data/Hora da ação:</span> <span id="purchaseReceptionAt">—</span></p>
+                            <p id="purchaseReceptionNotesRow" class="hidden"><span class="font-semibold">Observações da receção:</span> <span id="purchaseReceptionNotes" class="italic"></span></p>
+                        </div>
                     </div>
 
                     <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
@@ -1810,15 +1857,30 @@
             return payload;
         }
 
+        /** Always set actor + timestamp on status transition (overwrites existing). */
+        function setOrderActorTimestamp(item, byCamel, bySnake, atCamel, atSnake) {
+            item[byCamel] = getCurrentUserName();
+            item[atCamel] = getNowDateTimeString();
+            const payload = {
+                [byCamel]: item[byCamel],
+                [atCamel]: item[atCamel]
+            };
+            if (bySnake) payload[bySnake] = item[byCamel];
+            if (atSnake) payload[atSnake] = item[atCamel];
+            return payload;
+        }
+
         const SHOPPING_SNAKE_ALIAS_KEYS = new Set([
             'purchased_by', 'purchased_at',
             'received_by', 'received_at',
+            'received_quantity', 'received_date', 'received_notes',
             'lab_by', 'lab_at'
         ]);
 
         const SHOPPING_OPTIONAL_ATTR_KEYS = new Set([
             ...SHOPPING_SNAKE_ALIAS_KEYS,
-            'purchasedAt', 'labBy', 'labAt'
+            'purchasedAt', 'labBy', 'labAt',
+            'receivedQuantity', 'receivedDate', 'receivedNotes'
         ]);
 
         function omitUpdateKeys(updates, keys) {
@@ -2815,6 +2877,9 @@
                 purchasedAt: item.purchasedAt ?? item.purchased_at ?? null,
                 receivedBy: item.receivedBy ?? item.received_by ?? null,
                 receivedAt: item.receivedAt ?? item.received_at ?? null,
+                receivedQuantity: item.receivedQuantity ?? item.received_quantity ?? null,
+                receivedDate: item.receivedDate ?? item.received_date ?? null,
+                receivedNotes: item.receivedNotes ?? item.received_notes ?? null,
                 labBy: item.labBy ?? item.lab_by ?? null,
                 labAt: item.labAt ?? item.lab_at ?? null,
                 purchaseDate: item.purchaseDate ?? item.purchase_date ?? null
@@ -3006,14 +3071,62 @@
         let currentPurchaseTab = 'overview';
 
         const purchaseStatusMap = {
-            overview: ['Pendente', 'Pedido de Cotação', 'Compra Feita', 'Em Laboratório', 'Pedido Cancelado'],
+            overview: ['Pendente', 'Pedido de Cotação', 'Compra Feita', 'Rececionado', 'Em Laboratório', 'Pedido Cancelado'],
             submitted: ['Pendente', 'Pedido de Cotação'],
             'to-receive': ['Compra Feita'],
-            received: ['Em Laboratório']
+            received: ['Rececionado', 'Em Laboratório']
         };
 
         function isOrderStatusEditable(status) {
-            return status === 'Pendente' || status === 'Pedido de Cotação' || status === 'Compra Feita';
+            return status === 'Pendente'
+                || status === 'Pedido de Cotação'
+                || status === 'Compra Feita'
+                || status === 'Rececionado';
+        }
+
+        function parseOrderQuantityNumber(value) {
+            const match = String(value ?? '').replace(',', '.').match(/-?\d+(?:\.\d+)?/);
+            return match ? Number(match[0]) : null;
+        }
+
+        function getOrderedQuantity(item) {
+            return item?.qty ?? item?.quantity ?? '';
+        }
+
+        function getReceivedQuantity(item) {
+            return item?.receivedQuantity ?? item?.received_quantity ?? '';
+        }
+
+        function isPartialReception(item) {
+            const ordered = parseOrderQuantityNumber(getOrderedQuantity(item));
+            const received = parseOrderQuantityNumber(getReceivedQuantity(item));
+            if (ordered == null || received == null) return false;
+            return received < ordered;
+        }
+
+        function formatMissingQuantity(item) {
+            const ordered = parseOrderQuantityNumber(getOrderedQuantity(item));
+            const received = parseOrderQuantityNumber(getReceivedQuantity(item));
+            if (ordered == null || received == null) return null;
+            const missing = ordered - received;
+            if (missing <= 0) return '0';
+            const orderedRaw = String(getOrderedQuantity(item)).trim();
+            const unitMatch = orderedRaw.match(/[a-zA-Zµμ%°\/]+.*$/);
+            const unit = unitMatch ? ` ${unitMatch[0].trim()}` : '';
+            const missingText = Number.isInteger(missing) ? String(missing) : String(Math.round(missing * 100) / 100);
+            return `${missingText}${unit}`;
+        }
+
+        function hasReceptionData(item) {
+            if (!item) return false;
+            return Boolean(
+                item.status === 'Rececionado'
+                || getReceivedQuantity(item)
+                || item.receivedDate || item.received_date
+                || item.receivedNotes || item.received_notes
+                || item.receivedBy || item.received_by
+                || item.receivedAt || item.received_at
+            );
         }
 
         const ALERTS_STORAGE_KEY = 'fk_procurement_alerts_v1';
@@ -4443,6 +4556,8 @@
                 }
             }
 
+            fillPurchaseReceptionSummary(item);
+
             const supplierInput = document.getElementById('purchaseSupplier');
             if (supplierInput) {
                 supplierInput.value = winnerSupplier || '';
@@ -4675,9 +4790,18 @@
                 return;
             }
 
+            if (novoStatus === 'Rececionado' && item.status !== 'Rececionado') {
+                if (selectEl) selectEl.value = item.status;
+                openReceptionModal(index);
+                return;
+            }
+
             alterarStatusPedido(index, novoStatus);
 
-            if (novoStatus === 'Em Laboratório' && (currentPurchaseTab === 'submitted' || currentPurchaseTab === 'to-receive')) {
+            if (
+                (novoStatus === 'Em Laboratório' || novoStatus === 'Rececionado')
+                && (currentPurchaseTab === 'submitted' || currentPurchaseTab === 'to-receive')
+            ) {
                 switchTab('tab-compras-rececionados');
             } else {
                 renderShopping();
@@ -4690,17 +4814,12 @@
 
             const updates = { status: shoppingList[index].status };
 
-            // Pedidos Rececionados tab = status Em Laboratório (no separate Rececionado status).
-            // On this transition: fill reception (received_*) and lab (lab_*) if empty.
+            // Em Laboratório = envio para o lab (não duplica receção física).
+            // On this transition: always set lab actor/timestamp.
             if (novoStatus === 'Em Laboratório' && previousStatus !== 'Em Laboratório') {
                 Object.assign(
                     updates,
-                    assignOrderActorTimestamp(
-                        shoppingList[index],
-                        'receivedBy', 'received_by',
-                        'receivedAt', 'received_at'
-                    ),
-                    assignOrderActorTimestamp(
+                    setOrderActorTimestamp(
                         shoppingList[index],
                         'labBy', 'lab_by',
                         'labAt', 'lab_at'
@@ -4999,17 +5118,20 @@
             }
 
             const receivedRaw = item?.receivedAt || item?.received_at;
-            const receivedKey = toPurchaseDateKey(receivedRaw);
+            const receivedKey = toPurchaseDateKey(item?.receivedDate || item?.received_date || receivedRaw);
             const receivedStamp = formatOrderActorStamp(
                 item?.receivedBy || item?.received_by,
                 receivedRaw
             );
-            if (receivedStamp || receivedKey) {
+            if (receivedStamp || receivedKey || getReceivedQuantity(item)) {
+                const qtyDetail = getReceivedQuantity(item)
+                    ? `Qtd recebida: ${getReceivedQuantity(item)}`
+                    : '';
                 events.push({
                     sortKey: receivedKey || '9999-99-99',
                     order: 6,
-                    title: 'Receção no laboratório',
-                    detail: receivedStamp?.label || formatPurchaseTimelineDate(receivedKey),
+                    title: 'Rececionado',
+                    detail: [receivedStamp?.label || formatPurchaseTimelineDate(receivedKey), qtyDetail].filter(Boolean).join(' · '),
                     accent: 'emerald'
                 });
             }
@@ -5020,7 +5142,7 @@
                 item?.labBy || item?.lab_by,
                 labAtRaw
             );
-            if (labStamp || labKey) {
+            if (labStamp || labKey || item?.status === 'Em Laboratório') {
                 events.push({
                     sortKey: labKey || receivedKey || '9999-99-99',
                     order: 7,
@@ -5488,6 +5610,145 @@
             renderShopping();
         }
 
+        function fillPurchaseReceptionSummary(item) {
+            const panel = document.getElementById('purchaseReceptionSummary');
+            if (!panel) return;
+
+            if (!hasReceptionData(item)) {
+                panel.classList.add('hidden');
+                return;
+            }
+
+            panel.classList.remove('hidden');
+
+            const orderedQty = String(getOrderedQuantity(item) || '—');
+            const receivedQty = String(getReceivedQuantity(item) || '—');
+            const partial = isPartialReception(item);
+            const missing = formatMissingQuantity(item);
+
+            const partialBadge = document.getElementById('purchaseReceptionPartialBadge');
+            if (partialBadge) partialBadge.classList.toggle('hidden', !partial);
+
+            const qtyCompare = document.getElementById('purchaseReceptionQtyCompare');
+            const receivedOnly = panel.querySelector('.purchase-reception-received-only');
+            if (partial && qtyCompare) {
+                qtyCompare.classList.remove('hidden');
+                if (receivedOnly) receivedOnly.classList.add('hidden');
+                const orderedEl = document.getElementById('purchaseReceptionOrderedQty');
+                const receivedEl = document.getElementById('purchaseReceptionReceivedQty');
+                const missingEl = document.getElementById('purchaseReceptionMissingQty');
+                if (orderedEl) orderedEl.textContent = orderedQty;
+                if (receivedEl) receivedEl.textContent = receivedQty;
+                if (missingEl) missingEl.textContent = missing != null ? missing : '—';
+            } else {
+                if (qtyCompare) qtyCompare.classList.add('hidden');
+                if (receivedOnly) receivedOnly.classList.remove('hidden');
+                const qtyEl = document.getElementById('purchaseReceptionQty');
+                if (qtyEl) qtyEl.textContent = receivedQty;
+            }
+
+            const dateEl = document.getElementById('purchaseReceptionDate');
+            if (dateEl) {
+                const dateRaw = item.receivedDate || item.received_date || '';
+                dateEl.textContent = formatAlertDate(toPurchaseDateKey(dateRaw)) || dateRaw || '—';
+            }
+
+            const byEl = document.getElementById('purchaseReceptionBy');
+            if (byEl) byEl.textContent = item.receivedBy || item.received_by || '—';
+
+            const atEl = document.getElementById('purchaseReceptionAt');
+            if (atEl) atEl.textContent = formatOrderDateTime(item.receivedAt || item.received_at) || '—';
+
+            const notes = String(item.receivedNotes || item.received_notes || '').trim();
+            const notesRow = document.getElementById('purchaseReceptionNotesRow');
+            const notesEl = document.getElementById('purchaseReceptionNotes');
+            if (notesRow && notesEl) {
+                if (notes) {
+                    notesEl.textContent = notes;
+                    notesRow.classList.remove('hidden');
+                } else {
+                    notesEl.textContent = '';
+                    notesRow.classList.add('hidden');
+                }
+            }
+        }
+
+        function openReceptionModal(index) {
+            const item = shoppingList[index];
+            if (!item) return;
+            document.getElementById('rececao_index').value = index;
+            document.getElementById('rececao_quantity').value = getOrderedQuantity(item) || '';
+            document.getElementById('rececao_date').value = getTodayDateString();
+            document.getElementById('rececao_notes').value = item.receivedNotes || item.received_notes || '';
+            openModal('modalRececao');
+        }
+
+        function closeReceptionModal() {
+            closeModal('modalRececao');
+            document.getElementById('rececao_index').value = '';
+            document.getElementById('rececao_quantity').value = '';
+            document.getElementById('rececao_date').value = '';
+            document.getElementById('rececao_notes').value = '';
+        }
+
+        async function saveRececao() {
+            const index = document.getElementById('rececao_index').value;
+            if (index === '') return;
+
+            const receivedQuantity = document.getElementById('rececao_quantity').value.trim();
+            const receivedDate = document.getElementById('rececao_date').value.trim();
+            const receivedNotes = document.getElementById('rececao_notes').value.trim();
+
+            if (!receivedQuantity) return alert('Indique a quantidade recebida.');
+            if (!receivedDate) return alert('Indique a data de receção.');
+
+            const receivedBy = getCurrentUserName();
+            const receivedAt = getNowDateTimeString();
+
+            shoppingList[index].status = 'Rececionado';
+            shoppingList[index].receivedQuantity = receivedQuantity;
+            shoppingList[index].received_quantity = receivedQuantity;
+            shoppingList[index].receivedDate = receivedDate;
+            shoppingList[index].received_date = receivedDate;
+            shoppingList[index].receivedNotes = receivedNotes || null;
+            shoppingList[index].received_notes = receivedNotes || null;
+            shoppingList[index].receivedBy = receivedBy;
+            shoppingList[index].received_by = receivedBy;
+            shoppingList[index].receivedAt = receivedAt;
+            shoppingList[index].received_at = receivedAt;
+
+            const item = shoppingList[index];
+            if (!item?.id) return alert('Pedido inválido.');
+
+            const { error } = await updateShoppingListRow(item.id, {
+                status: 'Rececionado',
+                received_quantity: receivedQuantity,
+                received_date: receivedDate,
+                received_notes: receivedNotes || null,
+                received_by: receivedBy,
+                received_at: receivedAt,
+                receivedQuantity,
+                receivedDate,
+                receivedNotes: receivedNotes || null,
+                receivedBy,
+                receivedAt
+            });
+
+            if (error) {
+                console.error('Erro ao confirmar receção:', error);
+                return alert('Erro ao guardar a receção no Supabase.');
+            }
+
+            shoppingList = await loadShoppingList();
+            closeReceptionModal();
+
+            if (currentPurchaseTab === 'submitted' || currentPurchaseTab === 'to-receive') {
+                switchTab('tab-compras-rececionados');
+            } else {
+                renderShopping();
+            }
+        }
+
         function verHistoricoProduto(produtoNome) {
             document.getElementById('historyProductName').innerText = produtoNome;
             const container = document.getElementById('historyListContainer');
@@ -5502,25 +5763,33 @@
                 return;
             }
 
-            const pedidosAbertos = historicoFiltrado.filter(item => item.status !== 'Em Laboratório');
-            const pedidosConcluidos = historicoFiltrado.filter(item => item.status === 'Em Laboratório');
+            const pedidosAbertos = historicoFiltrado.filter(item => item.status !== 'Em Laboratório' && item.status !== 'Rececionado');
+            const pedidosConcluidos = historicoFiltrado.filter(item => item.status === 'Em Laboratório' || item.status === 'Rececionado');
 
             const gerarCardsHTML = (lista) => lista.map(item => {
                 let badgeClass = "bg-slate-100 text-slate-700 border-slate-300";
                 if (item.status === 'Pendente') badgeClass = "bg-amber-100 text-amber-800 border-amber-300";
                 if (item.status === 'Pedido de Cotação') badgeClass = "bg-violet-100 text-violet-800 border-violet-300";
                 if (item.status === 'Compra Feita') badgeClass = "bg-sky-100 text-sky-800 border-sky-300";
+                if (item.status === 'Rececionado') badgeClass = "bg-teal-100 text-teal-800 border-teal-300";
                 if (item.status === 'Em Laboratório') badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-300";
                 if (item.status === 'Pedido Cancelado') badgeClass = "bg-rose-100 text-rose-800 border-rose-300";
 
+                const partialBadge = isPartialReception(item)
+                    ? `<span class="text-[9px] px-2 py-0.5 rounded-full font-semibold border border-amber-300 bg-amber-50 text-amber-800">Receção parcial</span>`
+                    : '';
+
                 return `
                     <div class="bg-white p-3 rounded-xl border border-slate-200">
-                        <div class="flex justify-between items-center mb-2">
+                        <div class="flex justify-between items-center mb-2 gap-2">
                             <span class="text-[11px] font-mono text-slate-400">${item.date}</span>
-                            <span class="text-[9px] px-2.5 py-0.5 rounded-full font-semibold border uppercase tracking-wider ${badgeClass}">${item.status}</span>
+                            <div class="flex flex-wrap items-center justify-end gap-1">
+                                ${partialBadge}
+                                <span class="text-[9px] px-2.5 py-0.5 rounded-full font-semibold border uppercase tracking-wider ${badgeClass}">${item.status}</span>
+                            </div>
                         </div>
                         <div class="space-y-2">
-                            <p class="text-sm font-bold text-slate-800">Qtd: <span class="text-violet-600">${item.qty}</span></p>
+                            <p class="text-sm font-bold text-slate-800">Qtd: <span class="text-violet-600">${item.qty}</span>${getReceivedQuantity(item) ? ` <span class="text-teal-700 font-semibold">· Rec: ${escapeHtml(String(getReceivedQuantity(item)))}</span>` : ''}</p>
                             <p class="text-xs text-slate-500"><span class="font-bold block">Requerente:</span>${escapeHtml(formatRequesterName(item.requester) || '—')}</p>
                             ${item.purpose ? `<p class="text-xs text-slate-500"><span class="font-bold">Finalidade:</span> ${item.purpose}</p>` : ''}
                             ${getOrderLabs(item).length ? `<p class="text-xs text-slate-500"><span class="font-bold">Laboratório:</span> ${formatOrderLabs(item)}</p>` : ''}
@@ -5786,12 +6055,15 @@
                         'Pendente': 'bg-amber-100 text-amber-700 border-amber-300',
                         'Pedido de Cotação': 'bg-violet-100 text-violet-700 border-violet-300',
                         'Compra Feita': 'bg-sky-100 text-sky-700 border-sky-300',
+                        'Rececionado': 'bg-teal-100 text-teal-700 border-teal-300',
                         'Em Laboratório': 'bg-emerald-100 text-emerald-700 border-emerald-300',
                         'Pedido Cancelado': 'bg-rose-100 text-rose-700 border-rose-300'
                     };
 
-                    const isReceivedTab = currentPurchaseTab === 'received';
                     const statusEditable = isOrderStatusEditable(item.status);
+                    const partialReceptionBadge = isPartialReception(item)
+                        ? `<span class="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800">Receção parcial</span>`
+                        : '';
 
                     const statusCell = statusEditable
                         ? `
@@ -5799,13 +6071,14 @@
                                 <option value="Pendente" ${item.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
                                 <option value="Pedido de Cotação" ${item.status === 'Pedido de Cotação' ? 'selected' : ''}>Pedido de Cotação</option>
                                 <option value="Compra Feita" ${item.status === 'Compra Feita' ? 'selected' : ''}>Compra Feita</option>
+                                <option value="Rececionado" ${item.status === 'Rececionado' ? 'selected' : ''}>Rececionado</option>
                                 <option value="Em Laboratório" ${item.status === 'Em Laboratório' ? 'selected' : ''}>Em Laboratório</option>
                                 <option value="Pedido Cancelado" ${item.status === 'Pedido Cancelado' ? 'selected' : ''}>Pedido Cancelado</option>
                             </select>
                         `
                         : `
                             <div class="inline-flex rounded-full border px-3 py-1.5 text-[10px] font-bold ${statusClasses[item.status] || 'bg-slate-100 text-slate-700 border-slate-300'}">
-                                ${isReceivedTab ? 'Em Laboratório' : item.status}
+                                ${item.status}
                             </div>
                         `;
 
@@ -5830,6 +6103,7 @@
                                         ${item.category || 'Sem categoria'}
                                     </span>
                                     ${formatOrderQuoteBadge(item, item.originalIndex)}
+                                    ${partialReceptionBadge}
                                 </div>
                             </td>
                             <td class="text-sm text-slate-700">
@@ -5888,7 +6162,7 @@
 
             document.getElementById('submittedSummary').innerText = `${shoppingList.filter(item => item.status === 'Pendente' || item.status === 'Pedido de Cotação').length} pedidos nesta categoria`;
             document.getElementById('toReceiveSummary').innerText = `${shoppingList.filter(item => item.status === 'Compra Feita').length} pedidos nesta categoria`;
-            document.getElementById('receivedSummary').innerText = `${shoppingList.filter(item => item.status === 'Em Laboratório').length} pedidos nesta categoria`;
+            document.getElementById('receivedSummary').innerText = `${shoppingList.filter(item => item.status === 'Rececionado' || item.status === 'Em Laboratório').length} pedidos nesta categoria`;
 
             renderPurchaseFilters();
             renderAlerts();
