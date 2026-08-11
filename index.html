@@ -1767,8 +1767,91 @@
             return user.displayName || user.username;
         }
 
+        /** Display name of the active authenticated user (prefer displayName, fallback username). */
+        function getCurrentUserName() {
+            return getUserDisplayName(currentUser);
+        }
+
         function getProfileLabel() {
-            return getUserDisplayName();
+            return getCurrentUserName();
+        }
+
+        function getOrderFieldValue(item, camelKey, snakeKey) {
+            if (!item) return '';
+            const raw = item[camelKey] ?? (snakeKey ? item[snakeKey] : undefined);
+            return String(raw || '').trim();
+        }
+
+        /** ISO datetime for order action history (same base as getTodayDateString). */
+        function getNowDateTimeString() {
+            return new Date().toISOString();
+        }
+
+        /**
+         * On status transition only: set actor + timestamp if empty (never overwrite existing).
+         * Returns camel + snake keys for Supabase update payloads.
+         */
+        function assignOrderActorTimestamp(item, byCamel, bySnake, atCamel, atSnake) {
+            const existingBy = getOrderFieldValue(item, byCamel, bySnake);
+            const existingAt = getOrderFieldValue(item, atCamel, atSnake);
+            item[byCamel] = existingBy || getCurrentUserName();
+            item[atCamel] = existingAt || getNowDateTimeString();
+            const payload = {
+                [byCamel]: item[byCamel],
+                [atCamel]: item[atCamel]
+            };
+            if (bySnake) payload[bySnake] = item[byCamel];
+            if (atSnake) payload[atSnake] = item[atCamel];
+            return payload;
+        }
+
+        const SHOPPING_SNAKE_ALIAS_KEYS = new Set([
+            'purchased_by', 'purchased_at',
+            'received_by', 'received_at',
+            'lab_by', 'lab_at'
+        ]);
+
+        const SHOPPING_OPTIONAL_ATTR_KEYS = new Set([
+            ...SHOPPING_SNAKE_ALIAS_KEYS,
+            'purchasedAt', 'labBy', 'labAt'
+        ]);
+
+        function omitUpdateKeys(updates, keys) {
+            const next = { ...updates };
+            keys.forEach(key => { delete next[key]; });
+            return next;
+        }
+
+        async function updateShoppingListRow(id, updates) {
+            let { error } = await supabaseClient
+                .from("shopping_list")
+                .update(updates)
+                .eq("id", id);
+
+            const isMissingColumn = (err) =>
+                /column|schema cache|Could not find/i.test(String(err?.message || err?.details || ''));
+
+            // Compatibility: schema may only have camelCase attribution columns
+            if (error && isMissingColumn(error)) {
+                const fallback = omitUpdateKeys(updates, SHOPPING_SNAKE_ALIAS_KEYS);
+                const retry = await supabaseClient
+                    .from("shopping_list")
+                    .update(fallback)
+                    .eq("id", id);
+                error = retry.error;
+            }
+
+            // Compatibility: purchasedAt / labBy / labAt may not exist yet
+            if (error && isMissingColumn(error)) {
+                const minimal = omitUpdateKeys(updates, SHOPPING_OPTIONAL_ATTR_KEYS);
+                const retry = await supabaseClient
+                    .from("shopping_list")
+                    .update(minimal)
+                    .eq("id", id);
+                error = retry.error;
+            }
+
+            return { error };
         }
 
         function canApproveProducts() {
@@ -2721,7 +2804,14 @@
                 quotes: Array.isArray(item.quotes) ? item.quotes : [],
                 selectedSupplier: item.selected_supplier ?? null,
                 selectedPrice: item.selected_price ?? null,
-                cancelReason: item.cancel_reason ?? null
+                cancelReason: item.cancel_reason ?? null,
+                purchasedBy: item.purchasedBy ?? item.purchased_by ?? null,
+                purchasedAt: item.purchasedAt ?? item.purchased_at ?? null,
+                receivedBy: item.receivedBy ?? item.received_by ?? null,
+                receivedAt: item.receivedAt ?? item.received_at ?? null,
+                labBy: item.labBy ?? item.lab_by ?? null,
+                labAt: item.labAt ?? item.lab_at ?? null,
+                purchaseDate: item.purchaseDate ?? item.purchase_date ?? null
             }));
         }
 
@@ -4591,24 +4681,30 @@
             const previousStatus = shoppingList[index].status;
             shoppingList[index].status = novoStatus;
 
-            if (novoStatus === 'Em Laboratório' && previousStatus === 'Compra Feita') {
-                shoppingList[index].receivedBy = getProfileLabel();
-                shoppingList[index].receivedAt = getTodayDateString();
+            const updates = { status: shoppingList[index].status };
+
+            // Pedidos Rececionados tab = status Em Laboratório (no separate Rececionado status).
+            // On this transition: fill reception (received_*) and lab (lab_*) if empty.
+            if (novoStatus === 'Em Laboratório' && previousStatus !== 'Em Laboratório') {
+                Object.assign(
+                    updates,
+                    assignOrderActorTimestamp(
+                        shoppingList[index],
+                        'receivedBy', 'received_by',
+                        'receivedAt', 'received_at'
+                    ),
+                    assignOrderActorTimestamp(
+                        shoppingList[index],
+                        'labBy', 'lab_by',
+                        'labAt', 'lab_at'
+                    )
+                );
             }
 
             const item = shoppingList[index];
             if (!item?.id) return;
 
-            const updates = { status: item.status };
-            if (novoStatus === 'Em Laboratório' && previousStatus === 'Compra Feita') {
-                updates.receivedBy = item.receivedBy;
-                updates.receivedAt = item.receivedAt;
-            }
-
-            const { error } = await supabaseClient
-                .from("shopping_list")
-                .update(updates)
-                .eq("id", item.id);
+            const { error } = await updateShoppingListRow(item.id, updates);
 
             if (error) {
                 console.error("Erro ao atualizar estado do pedido:", error);
@@ -4633,9 +4729,58 @@
         }
 
         function formatPurchaseTimelineDate(value) {
-            const key = toPurchaseDateKey(value);
-            if (!key) return '';
-            return formatAlertDate(key) || key;
+            return formatOrderDateTime(value) || formatAlertDate(toPurchaseDateKey(value)) || '';
+        }
+
+        function formatOrderDateTime(value) {
+            if (!value) return '';
+            const s = String(value).trim();
+            if (!s) return '';
+            const hasTime = /T\d{2}:\d{2}/.test(s) || /\d{2}:\d{2}/.test(s.slice(10));
+            const parsed = new Date(s);
+            if (!Number.isNaN(parsed.getTime()) && hasTime) {
+                const dd = String(parsed.getDate()).padStart(2, '0');
+                const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+                const yyyy = parsed.getFullYear();
+                const hh = String(parsed.getHours()).padStart(2, '0');
+                const mi = String(parsed.getMinutes()).padStart(2, '0');
+                return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+            }
+            const key = toPurchaseDateKey(s);
+            return formatAlertDate(key) || s;
+        }
+
+        function formatOrderActorStamp(by, at) {
+            const name = String(by || '').trim();
+            const when = formatOrderDateTime(at);
+            if (name && when) return { name, when, label: `${name} · ${when}` };
+            if (name) return { name, when: '', label: name };
+            if (when) return { name: '', when, label: when };
+            return null;
+        }
+
+        function renderOrderActorCell(by, at, extraHtml = '') {
+            const name = String(by || '').trim();
+            if (!name) return '<span class="text-slate-400">—</span>';
+            const when = formatOrderDateTime(at);
+            return `<p class="font-medium text-slate-800">${escapeHtml(name)}</p>${when ? `<p class="text-[10px] text-slate-500 mt-0.5">${escapeHtml(when)}</p>` : ''}${extraHtml}`;
+        }
+
+        function renderReceivedByCell(item) {
+            const receivedBy = String(item?.receivedBy || '').trim();
+            const labBy = String(item?.labBy || '').trim();
+            if (!receivedBy && !labBy) return '<span class="text-slate-400">—</span>';
+
+            if (!receivedBy) return renderOrderActorCell(labBy, item.labAt);
+
+            const sameActor = labBy && labBy === receivedBy;
+            const sameTime = !item.labAt || item.labAt === item.receivedAt;
+            if (!labBy || (sameActor && sameTime)) {
+                return renderOrderActorCell(receivedBy, item.receivedAt);
+            }
+
+            const labLine = `<p class="text-[10px] text-violet-600 mt-1">Lab: ${escapeHtml(labBy)}${item.labAt ? ` · ${escapeHtml(formatOrderDateTime(item.labAt))}` : ''}</p>`;
+            return renderOrderActorCell(receivedBy, item.receivedAt, labLine);
         }
 
         function switchPurchaseDetailTab(tabId) {
@@ -4813,15 +4958,18 @@
                 });
             }
 
-            const purchaseDateRaw = item?.purchaseDate || item?.purchase_date;
-            const purchaseDateKey = toPurchaseDateKey(purchaseDateRaw);
-            if (purchaseDateKey) {
-                const by = String(item?.purchasedBy || '').trim();
+            const purchaseAtRaw = item?.purchasedAt || item?.purchased_at || item?.purchaseDate || item?.purchase_date;
+            const purchaseDateKey = toPurchaseDateKey(purchaseAtRaw);
+            const purchaseStamp = formatOrderActorStamp(
+                item?.purchasedBy || item?.purchased_by,
+                purchaseAtRaw
+            );
+            if (purchaseStamp || purchaseDateKey) {
                 events.push({
-                    sortKey: purchaseDateKey,
+                    sortKey: purchaseDateKey || toPurchaseDateKey(purchaseStamp?.when) || '9999-99-99',
                     order: 4,
                     title: 'Compra efetuada',
-                    detail: `${formatPurchaseTimelineDate(purchaseDateKey)}${by ? ` · ${by}` : ''}`,
+                    detail: purchaseStamp?.label || formatPurchaseTimelineDate(purchaseDateKey),
                     accent: 'sky'
                 });
             }
@@ -4845,14 +4993,33 @@
 
             const receivedRaw = item?.receivedAt || item?.received_at;
             const receivedKey = toPurchaseDateKey(receivedRaw);
-            if (receivedKey) {
-                const by = String(item?.receivedBy || '').trim();
+            const receivedStamp = formatOrderActorStamp(
+                item?.receivedBy || item?.received_by,
+                receivedRaw
+            );
+            if (receivedStamp || receivedKey) {
                 events.push({
-                    sortKey: receivedKey,
+                    sortKey: receivedKey || '9999-99-99',
                     order: 6,
                     title: 'Receção no laboratório',
-                    detail: `${formatPurchaseTimelineDate(receivedKey)}${by ? ` · ${by}` : ''}`,
+                    detail: receivedStamp?.label || formatPurchaseTimelineDate(receivedKey),
                     accent: 'emerald'
+                });
+            }
+
+            const labAtRaw = item?.labAt || item?.lab_at;
+            const labKey = toPurchaseDateKey(labAtRaw);
+            const labStamp = formatOrderActorStamp(
+                item?.labBy || item?.lab_by,
+                labAtRaw
+            );
+            if (labStamp || labKey) {
+                events.push({
+                    sortKey: labKey || receivedKey || '9999-99-99',
+                    order: 7,
+                    title: 'Em Laboratório',
+                    detail: labStamp?.label || formatPurchaseTimelineDate(labKey),
+                    accent: 'violet'
                 });
             }
 
@@ -5090,8 +5257,14 @@
             const monthName = monthNames[monthIndex];
 
             shoppingList[index].status = "Compra Feita";
-            shoppingList[index].purchaseDate = getTodayDateString();
-            shoppingList[index].purchasedBy = getProfileLabel();
+            if (!getOrderFieldValue(shoppingList[index], 'purchaseDate', 'purchase_date')) {
+                shoppingList[index].purchaseDate = getTodayDateString();
+            }
+            const purchaseActorUpdate = assignOrderActorTimestamp(
+                shoppingList[index],
+                'purchasedBy', 'purchased_by',
+                'purchasedAt', 'purchased_at'
+            );
             shoppingList[index].cartNumber = cartNumber;
             shoppingList[index].purchaseCategory = categoryLabel;
             shoppingList[index].category = categoryLabel;
@@ -5109,17 +5282,14 @@
             const updates = {
                 status: item.status,
                 purchaseDate: item.purchaseDate,
-                purchasedBy: item.purchasedBy,
                 cart_number: item.cartNumber,
                 purchaseCategory: item.purchaseCategory,
                 category: item.category,
-                purchaseCost: item.purchaseCost
+                purchaseCost: item.purchaseCost,
+                ...purchaseActorUpdate
             };
 
-            const { error: updateError } = await supabaseClient
-                .from("shopping_list")
-                .update(updates)
-                .eq("id", item.id);
+            const { error: updateError } = await updateShoppingListRow(item.id, updates);
 
             if (updateError) {
                 console.error("Erro ao registar compra:", updateError);
@@ -5688,15 +5858,11 @@
                             </td>` : ''}
                             ${showPurchasedByColumn ? `
                             <td class="text-xs text-slate-600">
-                                ${item.purchasedBy
-                                    ? `<p class="font-medium text-slate-800">${escapeHtml(item.purchasedBy)}</p>${item.purchaseDate ? `<p class="text-[10px] text-slate-500 mt-0.5">${formatAlertDate(item.purchaseDate)}</p>` : ''}`
-                                    : '<span class="text-slate-400">—</span>'}
+                                ${renderOrderActorCell(item.purchasedBy, item.purchasedAt || item.purchaseDate)}
                             </td>` : ''}
                             ${showReceivedByColumn ? `
                             <td class="text-xs text-slate-600">
-                                ${item.receivedBy
-                                    ? `<p class="font-medium text-slate-800">${escapeHtml(item.receivedBy)}</p>${item.receivedAt ? `<p class="text-[10px] text-slate-500 mt-0.5">${formatAlertDate(item.receivedAt)}</p>` : ''}`
-                                    : '<span class="text-slate-400">—</span>'}
+                                ${renderReceivedByCell(item)}
                             </td>` : ''}
                             <td class="text-sm text-slate-700">
                                 ${item.comment ? `<p class="italic text-slate-500 line-clamp-2">${escapeHtml(item.comment)}</p>` : '<span class="text-slate-400">Sem comentário</span>'}
@@ -6673,7 +6839,10 @@
 
         function formatAlertDate(dateStr) {
             if (!dateStr) return '';
-            const [year, month, day] = dateStr.split('-');
+            const s = String(dateStr).trim();
+            const datePart = s.length >= 10 ? s.slice(0, 10) : s;
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return s;
+            const [year, month, day] = datePart.split('-');
             return `${day}/${month}/${year}`;
         }
 
