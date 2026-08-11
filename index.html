@@ -1277,6 +1277,32 @@
         </div>
     </div>
 
+    <div id="modalBudgetCenterHistory" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-shrink-0">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-violet-50 border border-violet-100">
+                        <i class="fa-solid fa-clock-rotate-left text-violet-600 text-sm"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 id="budgetCenterHistoryTitle" class="text-sm font-semibold text-slate-900 truncate">Histórico</h3>
+                        <p id="budgetCenterHistorySubtitle" class="text-xs text-slate-500 mt-0.5 truncate">Compras do centro de custo</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeBudgetCenterHistoryModal()" class="text-slate-400 hover:text-slate-600 text-xl leading-none flex-shrink-0">&times;</button>
+            </div>
+            <div class="px-5 py-3 border-b border-slate-100 bg-slate-50 flex-shrink-0">
+                <p class="text-[10px] uppercase font-semibold text-slate-400">Total gasto</p>
+                <p id="budgetCenterHistoryTotal" class="mt-0.5 text-base font-semibold text-slate-900">€ 0,00</p>
+            </div>
+            <div id="budgetCenterHistoryBody" class="p-5 overflow-y-auto flex-1 min-h-0">
+            </div>
+            <div class="px-5 py-4 border-t border-slate-100 bg-slate-50 flex-shrink-0">
+                <button type="button" onclick="closeBudgetCenterHistoryModal()" class="w-full rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modalCompraDetalhes" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div class="p-6 border-b bg-slate-50 flex justify-between items-center flex-shrink-0">
@@ -1336,6 +1362,12 @@
                         </div>
 
                         <div id="purchaseAllocationRows" class="space-y-3"></div>
+                    </div>
+
+                    <div id="purchaseBudgetImpactPanel" class="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 space-y-2">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Impacto no budget <span id="purchaseBudgetImpactMonth" class="normal-case font-semibold text-slate-500"></span></p>
+                        <div id="purchaseBudgetImpactBody" class="space-y-2"></div>
+                        <p class="text-[10px] text-slate-400">Informativo — não impede confirmar a compra.</p>
                     </div>
                 </div>
 
@@ -3216,10 +3248,24 @@
             return new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 0 }).format(value || 0);
         }
 
-        function getBudgetColor(perc) {
-            if (perc > 90) return 'bg-red-500';
-            if (perc > 70) return 'bg-amber-500';
+        function getBudgetColor(perc, total) {
+            if (total != null && (!total || total <= 0)) return 'bg-slate-300';
+            if (perc > 90) return 'bg-rose-500';
+            if (perc >= 70) return 'bg-amber-500';
             return 'bg-emerald-500';
+        }
+
+        function getBudgetPercentTextColor(perc, total) {
+            if (total != null && (!total || total <= 0)) return 'text-slate-400';
+            if (perc > 90) return 'text-rose-600';
+            if (perc >= 70) return 'text-amber-600';
+            return 'text-emerald-600';
+        }
+
+        function getBudgetAvailableColor(available) {
+            if (available > 0) return 'text-emerald-700';
+            if (available < 0) return 'text-rose-700';
+            return 'text-slate-500';
         }
 
         function getBudgetUsagePercent(spent, total) {
@@ -3304,7 +3350,9 @@
 
             const totalBudget = categoryItems.reduce((sum, item) => sum + item.total, 0);
             const totalSpent = categoryItems.reduce((sum, item) => sum + item.spent, 0);
+            const totalAvailable = totalBudget - totalSpent;
             const usagePercent = getBudgetUsagePercent(totalSpent, totalBudget);
+            const percentLabel = formatBudgetUsagePercent(totalSpent, totalBudget);
             const progressWidth = getBudgetProgressWidth(totalSpent, totalBudget);
 
             const categoryStyle = budgetCategories.find(c => c.label === activeBudgetCategory) || budgetCategories[0];
@@ -3320,10 +3368,15 @@
                         <div class="text-right">
                             <p class="text-[10px] text-slate-500">Gasto</p>
                             <p class="text-base font-semibold text-slate-900">€ ${formatCurrency(totalSpent)}</p>
+                            <p class="mt-1.5 text-[10px] text-slate-500">Disponível</p>
+                            <p class="text-sm font-semibold ${getBudgetAvailableColor(totalAvailable)}">€ ${formatCurrency(totalAvailable)}</p>
                         </div>
                     </div>
-                    <div class="mt-3 h-1.5 w-full rounded-full bg-white/80">
-                        <div data-budget-summary-progress class="${getBudgetColor(usagePercent)} h-full rounded-full transition-all duration-500" style="width: ${progressWidth}%"></div>
+                    <div class="mt-3 flex items-center gap-2">
+                        <div class="h-1.5 min-w-0 flex-1 rounded-full bg-white/80">
+                            <div data-budget-summary-progress class="${getBudgetColor(usagePercent, totalBudget)} h-full rounded-full transition-all duration-500" style="width: ${progressWidth}%"></div>
+                        </div>
+                        <span data-budget-summary-percent class="shrink-0 text-[11px] font-semibold tabular-nums ${getBudgetPercentTextColor(usagePercent, totalBudget)}">${percentLabel}%</span>
                     </div>
                     <div class="mt-3">
                         <label class="text-[9px] uppercase font-semibold text-slate-400">Budget total do mês (€)</label>
@@ -3387,13 +3440,22 @@
                 const usagePercent = getBudgetUsagePercent(item.spent, item.total);
                 const percentLabel = formatBudgetUsagePercent(item.spent, item.total);
                 const progressWidth = getBudgetProgressWidth(item.spent, item.total);
+                const available = item.total - item.spent;
                 const percentEl = card.querySelector('[data-percent]');
                 const progressEl = card.querySelector('[data-progress-bar]');
+                const availableEl = card.querySelector('[data-available]');
 
-                if (percentEl) percentEl.textContent = `${percentLabel}%`;
+                if (percentEl) {
+                    percentEl.textContent = `${percentLabel}%`;
+                    percentEl.className = `shrink-0 text-[11px] font-semibold tabular-nums ${getBudgetPercentTextColor(usagePercent, item.total)}`;
+                }
                 if (progressEl) {
                     progressEl.style.width = `${progressWidth}%`;
-                    progressEl.className = `h-full rounded-full transition-all duration-500 ${getBudgetColor(usagePercent)}`;
+                    progressEl.className = `h-full rounded-full transition-all duration-500 ${getBudgetColor(usagePercent, item.total)}`;
+                }
+                if (availableEl) {
+                    availableEl.textContent = `€ ${formatCurrency(available)}`;
+                    availableEl.className = `mt-0.5 text-xs font-semibold ${getBudgetAvailableColor(available)}`;
                 }
             }
 
@@ -3441,11 +3503,11 @@
                     const usagePercent = getBudgetUsagePercent(item.spent, item.total);
                     const percentLabel = formatBudgetUsagePercent(item.spent, item.total);
                     const progressWidth = getBudgetProgressWidth(item.spent, item.total);
+                    const available = item.total - item.spent;
                     return `
                         <div class="bg-white p-3.5 rounded-xl border ${categoryStyle.cardBorder}" data-budget-card="${getBudgetCardKey(activeBudgetMonth, item.label)}">
-                            <div class="flex justify-between items-center mb-2.5">
+                            <div class="mb-2.5">
                                 <p class="text-xs font-semibold ${categoryStyle.textColor}">${item.label}</p>
-                                <span class="text-[11px] font-medium text-slate-500" data-percent>${percentLabel}%</span>
                             </div>
 
                             <div class="grid grid-cols-2 gap-2 mb-3">
@@ -3459,6 +3521,8 @@
                                         oninput="updateBudgetValue(${activeBudgetMonth}, '${item.label}', 'spent', this.value)"
                                         class="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs outline-none focus:ring-2 focus:ring-violet-200"
                                     >
+                                    <p class="mt-1.5 text-[9px] uppercase font-semibold text-slate-400">Disponível</p>
+                                    <p class="mt-0.5 text-xs font-semibold ${getBudgetAvailableColor(available)}" data-available>€ ${formatCurrency(available)}</p>
                                 </div>
                                 <div>
                                     <label class="text-[9px] uppercase font-semibold text-slate-400">Budget total (€)</label>
@@ -3473,9 +3537,20 @@
                                 </div>
                             </div>
 
-                            <div class="h-1.5 w-full rounded-full bg-slate-100">
-                                <div data-progress-bar class="h-full rounded-full transition-all duration-500 ${getBudgetColor(usagePercent)}" style="width: ${progressWidth}%"></div>
+                            <div class="flex items-center gap-2">
+                                <div class="h-1.5 min-w-0 flex-1 rounded-full bg-slate-100">
+                                    <div data-progress-bar class="h-full rounded-full transition-all duration-500 ${getBudgetColor(usagePercent, item.total)}" style="width: ${progressWidth}%"></div>
+                                </div>
+                                <span class="shrink-0 text-[11px] font-semibold tabular-nums ${getBudgetPercentTextColor(usagePercent, item.total)}" data-percent>${percentLabel}%</span>
                             </div>
+
+                            <button
+                                type="button"
+                                onclick='openBudgetCenterHistoryModal(${activeBudgetMonth}, ${JSON.stringify(activeBudgetCategory)}, ${JSON.stringify(item.label)})'
+                                class="mt-3 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition"
+                            >
+                                Histórico
+                            </button>
                         </div>
                     `;
                 }).join('')
@@ -3576,6 +3651,117 @@
                     ...categoryDatasets
                 ]
             };
+        }
+
+        function getPurchaseMonthName(item) {
+            const stored = item?.purchaseCost?.month;
+            if (stored && monthNames.includes(stored)) return stored;
+            const dateKey = toPurchaseDateKey(item?.purchaseDate);
+            if (dateKey && /^\d{4}-\d{2}-\d{2}/.test(dateKey)) {
+                const monthIndex = Number(dateKey.slice(5, 7)) - 1;
+                return monthNames[monthIndex] || '';
+            }
+            return '';
+        }
+
+        function getBudgetCenterAllocatedValue(item, centerLabel) {
+            const allocations = item?.purchaseCost?.allocations;
+            if (!Array.isArray(allocations) || !allocations.length) return null;
+            const alloc = allocations.find(row => String(row?.center || '').trim() === String(centerLabel || '').trim());
+            if (!alloc) return null;
+            const totalCost = Number(item.purchaseCost?.totalCost) || 0;
+            const percent = Number(alloc.percent) || 0;
+            return (totalCost * percent) / 100;
+        }
+
+        function getBudgetCenterPurchaseHistory(monthIndex, categoryLabel, centerLabel) {
+            const monthName = monthNames[monthIndex];
+            const rows = [];
+
+            shoppingList.forEach(item => {
+                const itemCategory = item.purchaseCategory || item.category || '';
+                if (itemCategory !== categoryLabel) return;
+                if (getPurchaseMonthName(item) !== monthName) return;
+
+                const allocatedValue = getBudgetCenterAllocatedValue(item, centerLabel);
+                if (allocatedValue == null) return;
+
+                rows.push({
+                    date: item.purchaseDate || '',
+                    product: item.name || '—',
+                    qty: item.qty ?? '—',
+                    value: allocatedValue,
+                    user: item.purchasedBy || item.receivedBy || item.requester || '—'
+                });
+            });
+
+            rows.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+            return rows;
+        }
+
+        function formatBudgetHistoryEuro(value) {
+            return `€ ${Number(value || 0).toFixed(2).replace('.', ',')}`;
+        }
+
+        function openBudgetCenterHistoryModal(monthIndex, categoryLabel, centerLabel) {
+            const monthName = monthNames[monthIndex] || '';
+            const rows = getBudgetCenterPurchaseHistory(monthIndex, categoryLabel, centerLabel);
+            const totalSpent = rows.reduce((sum, row) => sum + (Number(row.value) || 0), 0);
+
+            const titleEl = document.getElementById('budgetCenterHistoryTitle');
+            const subtitleEl = document.getElementById('budgetCenterHistorySubtitle');
+            const totalEl = document.getElementById('budgetCenterHistoryTotal');
+            const bodyEl = document.getElementById('budgetCenterHistoryBody');
+            if (!titleEl || !bodyEl) return;
+
+            titleEl.textContent = `Histórico — ${centerLabel}`;
+            if (subtitleEl) {
+                subtitleEl.textContent = `${categoryLabel} · ${monthName}`;
+            }
+            if (totalEl) {
+                totalEl.textContent = formatBudgetHistoryEuro(totalSpent);
+            }
+
+            if (!rows.length) {
+                bodyEl.innerHTML = `
+                    <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
+                        Nenhuma compra registada para este centro de custo neste mês.
+                    </div>
+                `;
+            } else {
+                bodyEl.innerHTML = `
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="min-w-full text-left text-xs">
+                            <thead class="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th class="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide">Data</th>
+                                    <th class="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide">Produto</th>
+                                    <th class="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide">Qtd</th>
+                                    <th class="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-right">Valor</th>
+                                    <th class="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide">Utilizador</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 bg-white">
+                                ${rows.map(row => `
+                                    <tr>
+                                        <td class="px-3 py-2.5 text-slate-600 whitespace-nowrap">${escapeHtml(formatAlertDate(row.date) || '—')}</td>
+                                        <td class="px-3 py-2.5 text-slate-800 font-medium">${escapeHtml(row.product)}</td>
+                                        <td class="px-3 py-2.5 text-slate-600">${escapeHtml(row.qty)}</td>
+                                        <td class="px-3 py-2.5 text-slate-800 font-semibold text-right tabular-nums whitespace-nowrap">${escapeHtml(formatBudgetHistoryEuro(row.value))}</td>
+                                        <td class="px-3 py-2.5 text-slate-600">${escapeHtml(row.user)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+
+            openModal('modalBudgetCenterHistory');
+        }
+
+        function closeBudgetCenterHistoryModal() {
+            closeModal('modalBudgetCenterHistory');
         }
 
         function openBudgetAnnualTrendModal() {
@@ -4159,6 +4345,7 @@
             renderPurchaseHistoryTimeline(item);
             setPurchaseDadosEditable(isPurchase);
             ensurePurchaseDetailTabsVisible();
+            updatePurchaseBudgetPreview();
 
             const initialTab = options.initialTab || (isPurchase ? 'dados' : (quotesEditable ? 'cotacoes' : 'dados'));
             switchPurchaseDetailTab(initialTab);
@@ -4675,6 +4862,111 @@
             const unitPrice = parseFloat(document.getElementById('purchaseUnitPrice').value) || 0;
             const additionalCost = parseFloat(document.getElementById('purchaseAdditionalCost').value) || 0;
             document.getElementById('purchaseTotalCost').value = (unitPrice + additionalCost).toFixed(2);
+            updatePurchaseBudgetPreview();
+        }
+
+        function formatPurchaseEuro(value) {
+            return `€ ${Number(value || 0).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        function getPurchaseModalCategoryLabel() {
+            const el = document.getElementById('purchaseCategoryDisplay');
+            const fromDisplay = (el?.textContent || '').trim();
+            if (fromDisplay && fromDisplay !== '-') return fromDisplay;
+            return activeBudgetCategory || 'Padrões';
+        }
+
+        function getPurchaseAllocationRowsFromDom() {
+            return Array.from(document.querySelectorAll('#purchaseAllocationRows [data-allocation-row]')).map(row => {
+                const center = row.querySelector('select')?.value || '';
+                const percent = parseFloat(row.querySelector('input[type="number"]')?.value) || 0;
+                return { center, percent };
+            }).filter(row => row.center);
+        }
+
+        function updatePurchaseBudgetPreview() {
+            const panel = document.getElementById('purchaseBudgetImpactPanel');
+            const body = document.getElementById('purchaseBudgetImpactBody');
+            const monthLabelEl = document.getElementById('purchaseBudgetImpactMonth');
+            if (!panel || !body) return;
+
+            if (purchaseModalMode !== 'purchase') {
+                panel.classList.add('hidden');
+                return;
+            }
+
+            panel.classList.remove('hidden');
+
+            const monthIndex = new Date().getMonth();
+            const monthName = monthNames[monthIndex] || '';
+            if (monthLabelEl) monthLabelEl.textContent = monthName ? `(${monthName})` : '';
+
+            const totalCost = parseFloat(document.getElementById('purchaseTotalCost')?.value) || 0;
+            const categoryLabel = getPurchaseModalCategoryLabel();
+            const categoryData = budgetData[monthIndex]?.categories?.find(item => item.label === categoryLabel);
+            const rows = getPurchaseAllocationRowsFromDom();
+
+            if (!rows.length) {
+                body.innerHTML = `<p class="text-xs text-slate-500">Selecione um centro de custo para ver o impacto no budget.</p>`;
+                return;
+            }
+
+            const lines = rows.map(({ center, percent }) => {
+                const budgetItem = categoryData?.items?.find(item => item.label === center);
+                const purchaseShare = (totalCost * percent) / 100;
+                if (!budgetItem) {
+                    return { center, percent, purchaseShare, available: null, after: null, found: false };
+                }
+                const available = (budgetItem.total || 0) - (budgetItem.spent || 0);
+                return {
+                    center,
+                    percent,
+                    purchaseShare,
+                    available,
+                    after: available - purchaseShare,
+                    found: true
+                };
+            });
+
+            body.innerHTML = lines.map(line => {
+                if (!line.found) {
+                    return `
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                            <p class="text-xs font-semibold text-amber-800">${line.center}${rows.length > 1 ? ` (${line.percent}%)` : ''} · ${categoryLabel}</p>
+                            <p class="mt-1 text-[11px] text-amber-700">Centro não encontrado no budget deste mês.</p>
+                            <p class="mt-1 text-[11px] text-slate-600">Valor da compra: <span class="font-semibold">${formatPurchaseEuro(line.purchaseShare)}</span></p>
+                        </div>
+                    `;
+                }
+
+                const afterNegative = line.after < 0;
+                const afterClass = afterNegative ? 'text-rose-700' : 'text-emerald-700';
+                const boxClass = afterNegative
+                    ? 'border-rose-200 bg-rose-50'
+                    : 'border-emerald-200 bg-emerald-50';
+                const afterLabel = afterNegative ? 'Excede o budget' : 'Dentro do budget';
+
+                return `
+                    <div class="rounded-xl border ${boxClass} px-3 py-2.5">
+                        <p class="text-xs font-semibold text-slate-800">${line.center}${rows.length > 1 ? ` (${line.percent}%)` : ''} · ${categoryLabel}</p>
+                        <div class="mt-2 grid gap-1.5 text-[11px]">
+                            <div class="flex justify-between gap-3">
+                                <span class="text-slate-500">Budget disponível atual</span>
+                                <span class="font-semibold tabular-nums text-slate-800">${formatPurchaseEuro(line.available)}</span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-slate-500">Valor da compra</span>
+                                <span class="font-semibold tabular-nums text-slate-800">${formatPurchaseEuro(line.purchaseShare)}</span>
+                            </div>
+                            <div class="flex justify-between gap-3 border-t border-black/5 pt-1.5">
+                                <span class="text-slate-600 font-medium">Disponível após esta compra</span>
+                                <span class="font-bold tabular-nums ${afterClass}">${formatPurchaseEuro(line.after)}</span>
+                            </div>
+                        </div>
+                        <p class="mt-1.5 text-[10px] font-semibold ${afterClass}">${afterLabel}</p>
+                    </div>
+                `;
+            }).join('');
         }
 
         function addPurchaseAllocationRow() {
@@ -4689,17 +4981,18 @@
                 <div class="grid gap-3 md:grid-cols-[1fr_140px_auto] items-end" data-allocation-row="${rowId}">
                     <div>
                         <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Centro de Custo</label>
-                        <select class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-white">
+                        <select onchange="updatePurchaseBudgetPreview()" class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-white">
                             ${optionsHtml}
                         </select>
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Percentagem (%)</label>
-                        <input type="number" min="0" max="100" step="1" value="100" class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-white">
+                        <input type="number" min="0" max="100" step="1" value="100" oninput="updatePurchaseBudgetPreview()" class="w-full rounded-2xl border border-slate-300 px-3 py-3 bg-white">
                     </div>
                     <button type="button" onclick="removePurchaseAllocationRow('${rowId}')" class="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3 text-rose-600 font-semibold">Remover</button>
                 </div>
             `);
+            updatePurchaseBudgetPreview();
         }
 
         function removePurchaseAllocationRow(rowId) {
@@ -4709,6 +5002,8 @@
             const container = document.getElementById('purchaseAllocationRows');
             if (container.children.length === 0) {
                 addPurchaseAllocationRow();
+            } else {
+                updatePurchaseBudgetPreview();
             }
         }
 
