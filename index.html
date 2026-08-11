@@ -2798,6 +2798,7 @@
 
             return (data || []).map(item => ({
                 ...item,
+                requester: item.requester ?? null,
                 cartNumber: item.cart_number,
                 quoteRequested: item.quote_requested,
                 quoteDate: item.quote_date,
@@ -5389,7 +5390,7 @@
                         purpose,
                         category,
                         qty,
-                        requester: "Analista: " + requesterName,
+                        requester: requesterName,
                         urgent: isUrgent,
                         status: "Pendente",
                         comment: "",
@@ -5401,17 +5402,7 @@
                     return alert("Erro ao criar o pedido no Supabase.");
                 }
 
-                const { data, error: loadError } = await supabaseClient
-                    .from("shopping_list")
-                    .select("*")
-                    .order("date", { ascending: false });
-
-                if (loadError) {
-                    console.error("Erro ao recarregar pedidos:", loadError);
-                    return alert("Pedido criado, mas falhou o recarregamento da lista.");
-                }
-
-                shoppingList = data || [];
+                shoppingList = await loadShoppingList();
             }
 
             renderShopping();
