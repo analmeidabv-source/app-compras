@@ -113,7 +113,8 @@
         #appShell.hidden { display: none; }
         /* Tailwind CDN: `hidden` loses to `flex` on the same node — force picker overlays closed */
         #userUnitsPickerModal.hidden,
-        #alertUnitsPickerModal.hidden { display: none !important; }</style>
+        #alertUnitsPickerModal.hidden,
+        #modalConfirmarRececao.hidden { display: none !important; }</style>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans">
 
@@ -1062,7 +1063,7 @@
 
             <div class="flex gap-3">
                 <button type="button" onclick="closeReceiveConfirmationModal()" class="flex-1 rounded-2xl border border-slate-300 py-3 font-bold">Cancelar</button>
-                <button type="button" onclick="confirmReceive()" class="flex-1 rounded-2xl bg-emerald-600 py-3 text-white font-bold hover:bg-emerald-700">Confirmar Receção</button>
+                <button type="button" onclick="confirmReceive()" class="flex-1 rounded-2xl bg-emerald-600 py-3 text-white font-bold hover:bg-emerald-700">Confirmar Receção e Enviar para Laboratório</button>
             </div>
         </div>
     </div>
@@ -4900,10 +4901,12 @@
                 return;
             }
 
-            if (novoStatus === 'Em Laboratório' && item.status === 'Compra Feita') {
-                if (selectEl) selectEl.value = item.status;
-                openReceiveConfirmationModal(index, selectEl);
-                return;
+            if (novoStatus === 'Em Laboratório') {
+                if (item.status === 'Compra Feita') {
+                    if (selectEl) selectEl.value = item.status;
+                    openReceiveConfirmationModal(index, selectEl);
+                    return;
+                }
             }
 
             alterarStatusPedido(index, novoStatus);
@@ -5807,13 +5810,18 @@
             };
 
             const orderedQty = parseOrderQuantityNumber(getOrderedQuantity(item));
-            document.getElementById('receive_index').value = index;
+            document.getElementById('receive_index').value = String(index);
             fillReceiveOrderSummary(item);
             document.getElementById('receive_quantity').value = orderedQty != null ? orderedQty : '';
             document.getElementById('receive_date').value = getTodayDateString();
             document.getElementById('receive_notes').value = item.receivedNotes || item.received_notes || '';
             updateReceiveModalQtyCompare();
-            openModal('modalConfirmarRececao');
+
+            const modal = document.getElementById('modalConfirmarRececao');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            modal.setAttribute('aria-hidden', 'false');
         }
 
         function closeReceiveConfirmationModal() {
@@ -5822,7 +5830,12 @@
             }
             pendingReceiveStatusChange = null;
 
-            closeModal('modalConfirmarRececao');
+            const modal = document.getElementById('modalConfirmarRececao');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+            }
             document.getElementById('receive_index').value = '';
             document.getElementById('receive_quantity').value = '';
             document.getElementById('receive_date').value = '';
@@ -5897,7 +5910,18 @@
 
             pendingReceiveStatusChange = null;
             shoppingList = await loadShoppingList();
-            closeReceiveConfirmationModal();
+
+            const modal = document.getElementById('modalConfirmarRececao');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+            }
+            document.getElementById('receive_index').value = '';
+            document.getElementById('receive_quantity').value = '';
+            document.getElementById('receive_date').value = '';
+            document.getElementById('receive_notes').value = '';
+            clearReceiveOrderSummary();
 
             if (currentPurchaseTab === 'submitted' || currentPurchaseTab === 'to-receive') {
                 switchTab('tab-compras-rececionados');
