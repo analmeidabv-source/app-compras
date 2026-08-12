@@ -817,8 +817,8 @@
                         <i class="fa-solid fa-bell text-violet-500 text-sm"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-semibold text-slate-900">Alertas do Sistema</h3>
-                        <p class="text-xs text-slate-500 mt-0.5">Lembretes e notificações</p>
+                        <h3 class="text-sm font-semibold text-slate-900">Alertas e Lembretes</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Lembretes manuais e notificações do sistema</p>
                     </div>
                 </div>
                 <button onclick="togglePanel('alertPanel')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
@@ -1961,6 +1961,10 @@
             return canApproveProducts();
         }
 
+        function canCreateManualAlerts() {
+            return Boolean(currentUser?.username);
+        }
+
         function updateSidebarUserInfo() {
             const user = currentUser;
             const nameEl = document.getElementById('sidebarUserName');
@@ -2544,7 +2548,7 @@
 
         function updateAlertPanelForProfile() {
             const createWrap = document.getElementById('alertCreateButtonWrap');
-            if (createWrap) createWrap.classList.toggle('hidden', !canViewManagerAlerts());
+            if (createWrap) createWrap.classList.toggle('hidden', !canCreateManualAlerts());
         }
 
         function updateAddProductModalForProfile() {
@@ -3264,6 +3268,9 @@
                 visibilityUnits: Array.isArray(item.visibility_units) ? item.visibility_units : (item.visibility_units ?? []),
                 visibilityRoles: Array.isArray(item.visibility_roles) ? item.visibility_roles : (item.visibility_roles ?? []),
                 createdBy: item.created_by ?? '',
+                createdAt: item.created_at ?? null,
+                updatedBy: item.updated_by ?? null,
+                updatedAt: item.updated_at ?? null,
                 alertKind: item.alert_kind ?? 'lembrete'
             }));
         }
@@ -3292,6 +3299,9 @@
                 visibility_units: item.visibilityUnits ?? [],
                 visibility_roles: item.visibilityRoles ?? [],
                 created_by: item.createdBy ?? null,
+                created_at: item.createdAt ?? null,
+                updated_by: item.updatedBy ?? null,
+                updated_at: item.updatedAt ?? null,
                 alert_kind: item.alertKind ?? 'lembrete'
             }));
 
@@ -6880,6 +6890,60 @@
             return unitsOk && rolesOk;
         }
 
+        function isSystemGeneratedAlert(alert) {
+            const kind = String(alert?.alertKind || '').trim().toLowerCase();
+            return kind === 'sistema' || kind === 'system';
+        }
+
+        function resolveAlertActorLabel(login) {
+            const value = String(login || '').trim();
+            if (!value) return '';
+            if (currentUser?.username && currentUser.username === value) {
+                return getUserDisplayName(currentUser);
+            }
+            return value;
+        }
+
+        function formatAlertAuditDateTime(value) {
+            return formatOrderDateTime(value) || formatAlertDate(String(value || '').slice(0, 10)) || '';
+        }
+
+        /** On edit only: set updated_by / updated_at. Never changes created_by / created_at. */
+        function touchManualAlertAudit(alert) {
+            if (!alert || isSystemGeneratedAlert(alert)) return alert;
+            const login = currentUser?.username || '';
+            if (!login) return alert;
+            alert.updatedBy = login;
+            alert.updatedAt = getNowDateTimeString();
+            return alert;
+        }
+
+        function renderManualAlertAuditHtml(alert) {
+            if (!alert || isSystemGeneratedAlert(alert)) {
+                return `<p class="mt-1.5 text-[10px] text-slate-400">Gerado automaticamente</p>`;
+            }
+
+            const createdBy = resolveAlertActorLabel(alert.createdBy);
+            const createdAt = formatAlertAuditDateTime(alert.createdAt);
+            const updatedBy = resolveAlertActorLabel(alert.updatedBy);
+            const updatedAt = formatAlertAuditDateTime(alert.updatedAt);
+
+            const parts = [];
+            if (createdBy) {
+                parts.push(`<span class="block"><span class="font-medium text-slate-500">Criado por</span> ${escapeHtml(createdBy)}</span>`);
+            }
+            if (createdAt) {
+                parts.push(`<span class="block"><span class="font-medium text-slate-500">Criado em</span> ${escapeHtml(createdAt)}</span>`);
+            }
+            if (updatedBy || updatedAt) {
+                const editBits = [updatedBy, updatedAt].filter(Boolean).join(' · ');
+                parts.push(`<span class="block mt-0.5"><span class="font-medium text-slate-500">Última edição</span> ${escapeHtml(editBits)}</span>`);
+            }
+
+            if (!parts.length) return '';
+            return `<div class="mt-1.5 space-y-0.5 text-[10px] leading-snug text-slate-400">${parts.join('')}</div>`;
+        }
+
         function renderAlerts() {
             const container = document.getElementById('alertContainer');
             if (!container) return;
@@ -7038,6 +7102,7 @@
                                     ${isDone ? '<span class="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">Concluído</span>' : ''}
                                 </div>
                                 <p class="mt-1 text-sm ${palette.text} leading-snug">${alert.message}</p>
+                                ${renderManualAlertAuditHtml(alert)}
                             </div>
                         </div>
                         ${actionsHtml}
@@ -7281,6 +7346,7 @@
                                         </div>
                                         <p class="mt-1 text-sm text-slate-700 leading-snug">${alert.message}</p>
                                         <p class="mt-1.5 text-[11px] font-medium text-violet-600">Aparece em: ${formatAlertDate(alert.scheduledDate)}</p>
+                                        ${renderManualAlertAuditHtml(alert)}
                                     </div>
                                 </div>
                                 <div class="mt-3 pl-11">
@@ -7362,6 +7428,10 @@
         }
 
         function openModalAlerta() {
+            if (!canCreateManualAlerts()) {
+                return alert('É necessário autenticar-se para criar lembretes.');
+            }
+
             document.getElementById('alert_title').value = '';
             document.getElementById('alert_message').value = '';
             document.getElementById('alert_type').value = 'violet';
@@ -7396,7 +7466,9 @@
 
         async function saveAlerta() {
             console.log("saveAlert chamada");
-            if (!canViewManagerAlerts()) return;
+            if (!canCreateManualAlerts()) {
+                return alert('É necessário autenticar-se para criar lembretes.');
+            }
 
             const title = document.getElementById('alert_title').value.trim();
             const message = document.getElementById('alert_message').value.trim();
@@ -7420,6 +7492,8 @@
             }
 
             const today = getTodayDateString();
+            const createdBy = currentUser.username;
+            const createdAt = getNowDateTimeString();
             alerts.push({
                 id: getNextAlertId(),
                 type,
@@ -7430,7 +7504,10 @@
                 visibilityType,
                 visibilityUnits,
                 visibilityRoles,
-                createdBy: currentUser?.username || '',
+                createdBy,
+                createdAt,
+                updatedBy: null,
+                updatedAt: null,
                 alertKind
             });
 
@@ -7443,6 +7520,7 @@
             const alert = alerts.find(item => item.id === id);
             if (alert) {
                 alert.status = 'done';
+                touchManualAlertAudit(alert);
                 await saveAlerts();
                 renderAlerts();
             }
