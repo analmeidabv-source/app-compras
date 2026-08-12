@@ -29,7 +29,7 @@
           background: linear-gradient(160deg, #E9DDF8 0%, #F7F5FC 50%, #EEE8FA 100%);
         }
         .brand-logo, .brand-logo-login, .brand-icon {
-          background: transparent !important;
+          background: transparent !important;s
           mix-blend-mode: normal;
           display: block;
         }
@@ -834,6 +834,10 @@
                 <button onclick="openModalAlerta()" class="w-full rounded-lg border border-violet-200 bg-violet-50 px-3 py-2.5 text-violet-700 font-medium hover:bg-violet-100 transition flex items-center justify-center gap-2 text-sm">
                     <i class="fa-solid fa-plus text-xs"></i> Criar Novo Lembrete
                 </button>
+            </div>
+            <div class="px-4 pt-3 pb-0 border-b border-slate-100 bg-white flex gap-1">
+                <button type="button" id="alertInboxTabRecebidos" onclick="switchAlertInboxTab('recebidos')" class="alert-inbox-tab flex-1 rounded-t-lg px-3 py-2 text-xs font-semibold border-b-2 border-violet-500 text-violet-700 bg-slate-50">Recebidos</button>
+                <button type="button" id="alertInboxTabCriados" onclick="switchAlertInboxTab('criados')" class="alert-inbox-tab flex-1 rounded-t-lg px-3 py-2 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700">Criados por mim</button>
             </div>
             <div id="alertContainer" class="p-4 space-y-3 bg-slate-50 flex-1 overflow-y-auto"></div>
         </div>
@@ -6969,6 +6973,7 @@
                 const userUnits = Array.isArray(rawUnits)
                     ? rawUnits.map(String).filter(Boolean)
                     : String(rawUnits || '').split(',').map(v => v.trim()).filter(Boolean);
+                if (currentUser?.unit) userUnits.push(String(currentUser.unit));
                 unitsOk = visibilityUnits.some(unit => userUnits.includes(unit));
             }
 
@@ -7007,6 +7012,36 @@
             return formatOrderDateTime(value) || formatAlertDate(String(value || '').slice(0, 10)) || '';
         }
 
+        function formatAlertAudienceLabel(alert) {
+            if (!alert || isSystemGeneratedAlert(alert)) return 'Sistema';
+
+            const visibilityType = alert.visibilityType || 'all';
+            if (visibilityType === 'me') return 'Só para mim';
+            if (visibilityType === 'all') return 'Todos os utilizadores';
+
+            const units = Array.isArray(alert.visibilityUnits)
+                ? alert.visibilityUnits.filter(Boolean)
+                : [];
+            const roles = Array.isArray(alert.visibilityRoles)
+                ? alert.visibilityRoles.filter(Boolean)
+                : [];
+
+            const parts = [];
+            if (units.length === 1) parts.push(`Unidade ${units[0]}`);
+            else if (units.length > 1) parts.push(`Unidades ${units.join(', ')}`);
+            if (roles.length) {
+                const roleLabels = roles.map(role => {
+                    const key = String(role || '').toLowerCase();
+                    if (key === 'administrator' || key === 'administrador') return 'Administrador';
+                    if (key === 'manager') return 'Manager';
+                    if (key === 'analyst' || key === 'analista') return 'Analista';
+                    return role;
+                });
+                parts.push(`Perfis: ${roleLabels.join(', ')}`);
+            }
+            return parts.length ? parts.join(' · ') : 'Destinatários específicos';
+        }
+
         /** On edit only: set updated_by / updated_at. Never changes created_by / created_at. */
         function touchManualAlertAudit(alert) {
             if (!alert || isSystemGeneratedAlert(alert)) return alert;
@@ -7017,17 +7052,25 @@
             return alert;
         }
 
+        function renderSystemAlertOriginHtml() {
+            return `<p class="mt-1.5 text-[10px] text-slate-400"><span class="font-medium text-slate-500">Origem</span> Sistema</p>`;
+        }
+
         function renderManualAlertAuditHtml(alert) {
             if (!alert || isSystemGeneratedAlert(alert)) {
-                return `<p class="mt-1.5 text-[10px] text-slate-400">Gerado automaticamente</p>`;
+                return renderSystemAlertOriginHtml();
             }
 
+            const audience = formatAlertAudienceLabel(alert);
             const createdBy = resolveAlertActorLabel(alert.createdBy);
             const createdAt = formatAlertAuditDateTime(alert.createdAt);
             const updatedBy = resolveAlertActorLabel(alert.updatedBy);
             const updatedAt = formatAlertAuditDateTime(alert.updatedAt);
 
             const parts = [];
+            if (audience) {
+                parts.push(`<span class="block"><span class="font-medium text-slate-500">Destinatário</span> ${escapeHtml(audience)}</span>`);
+            }
             if (createdBy) {
                 parts.push(`<span class="block"><span class="font-medium text-slate-500">Criado por</span> ${escapeHtml(createdBy)}</span>`);
             }
@@ -7041,6 +7084,31 @@
 
             if (!parts.length) return '';
             return `<div class="mt-1.5 space-y-0.5 text-[10px] leading-snug text-slate-400">${parts.join('')}</div>`;
+        }
+
+        let currentAlertInboxTab = 'recebidos';
+
+        function switchAlertInboxTab(tabId) {
+            currentAlertInboxTab = tabId === 'criados' ? 'criados' : 'recebidos';
+            const recebidosBtn = document.getElementById('alertInboxTabRecebidos');
+            const criadosBtn = document.getElementById('alertInboxTabCriados');
+            const activeCls = ['border-violet-500', 'text-violet-700', 'bg-slate-50'];
+            const idleCls = ['border-transparent', 'text-slate-500'];
+
+            [recebidosBtn, criadosBtn].forEach(btn => {
+                if (!btn) return;
+                btn.classList.remove(...activeCls, ...idleCls, 'hover:text-slate-700');
+            });
+
+            if (currentAlertInboxTab === 'criados') {
+                criadosBtn?.classList.add(...activeCls);
+                recebidosBtn?.classList.add(...idleCls, 'hover:text-slate-700');
+            } else {
+                recebidosBtn?.classList.add(...activeCls);
+                criadosBtn?.classList.add(...idleCls, 'hover:text-slate-700');
+            }
+
+            renderAlerts();
         }
 
         function renderAlerts() {
@@ -7078,6 +7146,7 @@
                                 <p class="mt-1 text-sm font-semibold text-slate-900">${escapeHtml(request.name)}</p>
                                 <p class="mt-1 text-xs text-slate-600">Ref. ${escapeHtml(request.reference || '—')} · ${escapeHtml(request.brand || '—')}</p>
                                 <p class="mt-1.5 text-[11px] text-slate-500">Requerente: ${escapeHtml(formatRequesterName(request.requestedBy) || '—')} · ${formatAlertDate(request.requestedAt)}</p>
+                                ${renderSystemAlertOriginHtml()}
                             </div>
                         </div>
                         ${canReview ? `
@@ -7110,6 +7179,7 @@
                                 <p class="mt-1 text-sm font-semibold text-slate-900">${escapeHtml(request.name)}</p>
                                 <p class="mt-1 text-xs text-slate-600">Ref. ${escapeHtml(request.reference || '—')} · ${escapeHtml(request.brand || '—')}</p>
                                 <p class="mt-1.5 text-[11px] text-slate-500">${isApproved ? 'Adicionado à Base de Dados' : 'Pedido não aceite'} · ${escapeHtml(request.reviewedBy || '—')} em ${formatAlertDate(request.reviewedAt)}</p>
+                                ${renderSystemAlertOriginHtml()}
                             </div>
                         </div>
                         ${canRemove ? `
@@ -7225,6 +7295,7 @@
                                 <p class="mt-1 text-sm font-semibold ${isDone ? 'text-slate-600' : 'text-slate-900'}">${escapeHtml(alert.center)}</p>
                                 <p class="mt-1 text-xs text-slate-600">${escapeHtml(alert.category)} · ${escapeHtml(alert.month)}</p>
                                 <p class="mt-1.5 text-[11px] text-slate-500">Gasto € ${formatCurrency(alert.spent)} de € ${formatCurrency(alert.total)}</p>
+                                ${renderSystemAlertOriginHtml()}
                             </div>
                         </div>
                         ${renderSystemAlertActions(key, 'budget', isDone)}
@@ -7255,6 +7326,7 @@
                                     <p><span class="font-medium text-slate-500 block">Requerente:</span>${escapeHtml(formatRequesterName(item.requester) || '—')}</p>
                                 </div>
                                 <p class="mt-2 text-[11px] font-medium text-slate-600">Pedido de ${formatAlertDate(item.date)}</p>
+                                ${renderSystemAlertOriginHtml()}
                             </div>
                         </div>
                         ${key ? renderSystemAlertActions(key, 'pending', isDone) : ''}
@@ -7286,6 +7358,7 @@
                                     <p><span class="font-medium text-slate-500">Nº carrinho:</span> ${escapeHtml(item.cartNumber || '—')}</p>
                                 </div>
                                 <p class="mt-2 text-[11px] font-medium text-slate-600">Compra feita em ${formatAlertDate(referenceDate)}</p>
+                                ${renderSystemAlertOriginHtml()}
                             </div>
                         </div>
                         ${key ? renderSystemAlertActions(key, 'to-receive', isDone) : ''}
@@ -7326,6 +7399,7 @@
                                     <p><span class="font-medium text-slate-500 block">Requerente:</span>${escapeHtml(formatRequesterName(orderItem.requester) || '—')}</p>
                                 </div>
                                 <p class="mt-2 text-[11px] font-medium text-slate-600">Último pedido em ${formatAlertDate(lastOrderDate)}</p>
+                                ${renderSystemAlertOriginHtml()}
                             </div>
                         </div>
                         ${key ? renderSystemAlertActions(key, 'inactive-product', isDone) : ''}
@@ -7394,18 +7468,15 @@
                 `
                 : '';
 
-            const hasVisibleAlerts = Boolean(
-                pendingProductApprovals.length
-                || budgetAlerts.length
-                || stalePendingOrders.length
-                || staleToReceiveOrders.length
-                || staleInactiveProducts.length
-                || activeAlerts.length
-                || scheduledAlerts.length
-                || reviewedProductApprovals.length
-                || doneAlerts.length
-                || doneSystemAlerts.length
+            const username = currentUser?.username || '';
+            const createdByMeAlerts = alerts.filter(alert =>
+                Boolean(username)
+                && alert.createdBy === username
+                && !isSystemGeneratedAlert(alert)
             );
+            const createdActive = createdByMeAlerts.filter(alert => alert.status === 'active');
+            const createdScheduled = createdByMeAlerts.filter(alert => alert.status === 'scheduled' && alert.scheduledDate > today);
+            const createdDone = createdByMeAlerts.filter(alert => alert.status === 'done' || (alert.status === 'scheduled' && alert.scheduledDate <= today));
 
             const activeHtml = activeAlerts.length > 0
                 ? `
@@ -7414,10 +7485,6 @@
                         <div class="space-y-2">${activeAlerts.map(renderAlertCard).join('')}</div>
                     </div>
                 `
-                : '';
-
-            const emptyHtml = !hasVisibleAlerts
-                ? `<div class="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-400 text-center">Sem alertas ativos.</div>`
                 : '';
 
             const scheduledHtml = scheduledAlerts.length > 0
@@ -7485,16 +7552,70 @@
                 `
                 : '';
 
-            container.innerHTML = productApprovalsHtml
-                + budgetAlertsHtml
-                + stalePendingOrdersHtml
-                + staleToReceiveOrdersHtml
-                + staleInactiveProductsHtml
-                + activeHtml
-                + emptyHtml
-                + scheduledHtml
-                + reviewedApprovalsHtml
-                + doneHtml;
+            const recebidosHasContent = Boolean(
+                pendingProductApprovals.length
+                || budgetAlerts.length
+                || stalePendingOrders.length
+                || staleToReceiveOrders.length
+                || staleInactiveProducts.length
+                || activeAlerts.length
+                || scheduledAlerts.length
+                || reviewedProductApprovals.length
+                || doneAlerts.length
+                || visibleDoneSystemAlerts.length
+            );
+
+            const criadosHasContent = Boolean(
+                createdActive.length || createdScheduled.length || createdDone.length
+            );
+
+            const createdActiveHtml = createdActive.length > 0
+                ? `
+                    <div class="mb-4">
+                        <p class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Ativos</p>
+                        <div class="space-y-2">${createdActive.map(renderAlertCard).join('')}</div>
+                    </div>
+                `
+                : '';
+
+            const createdScheduledHtml = createdScheduled.length > 0
+                ? `
+                    <div class="mb-4">
+                        <p class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-violet-600">Agendados</p>
+                        <div class="space-y-2">${createdScheduled.map(renderAlertCard).join('')}</div>
+                    </div>
+                `
+                : '';
+
+            const createdDoneHtml = createdDone.length > 0
+                ? `
+                    <div class="mt-4 pt-4 border-t border-slate-200">
+                        <p class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Concluídos</p>
+                        <div class="space-y-2">${createdDone.map(renderAlertCard).join('')}</div>
+                    </div>
+                `
+                : '';
+
+            if (currentAlertInboxTab === 'criados') {
+                container.innerHTML = criadosHasContent
+                    ? (createdActiveHtml + createdScheduledHtml + createdDoneHtml)
+                    : `<div class="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-400 text-center">Ainda não criou lembretes.</div>`;
+                return;
+            }
+
+            container.innerHTML = recebidosHasContent
+                ? (
+                    productApprovalsHtml
+                    + budgetAlertsHtml
+                    + stalePendingOrdersHtml
+                    + staleToReceiveOrdersHtml
+                    + staleInactiveProductsHtml
+                    + activeHtml
+                    + scheduledHtml
+                    + reviewedApprovalsHtml
+                    + doneHtml
+                )
+                : `<div class="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-400 text-center">Sem alertas recebidos.</div>`;
         }
 
         function getTodayDateString() {
