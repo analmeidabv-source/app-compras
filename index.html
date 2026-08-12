@@ -1017,10 +1017,38 @@
 
             <input type="hidden" id="receive_index" value="">
 
+            <div id="receiveOrderSummary" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 mb-5 space-y-2.5">
+                <div>
+                    <p class="text-[10px] font-bold uppercase text-slate-400">Produto</p>
+                    <p id="receive_summary_product" class="text-sm font-semibold text-slate-800">—</p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold uppercase text-slate-400">Fornecedor</p>
+                    <p id="receive_summary_supplier" class="text-sm font-semibold text-slate-800">—</p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold uppercase text-slate-400">Quantidade pedida</p>
+                    <p id="receive_summary_ordered_qty" class="text-sm font-semibold text-slate-800">—</p>
+                </div>
+            </div>
+
             <div class="space-y-4 mb-6">
+                <div class="grid gap-2 sm:grid-cols-2">
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                        <p class="text-[10px] font-bold uppercase text-slate-400">Quantidade pedida</p>
+                        <p id="receive_ordered_qty_display" class="mt-0.5 text-sm font-semibold text-slate-700">—</p>
+                    </div>
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+                        <p class="text-[10px] font-bold uppercase text-emerald-700">Quantidade recebida</p>
+                        <p id="receive_received_qty_display" class="mt-0.5 text-sm font-semibold text-emerald-800">—</p>
+                    </div>
+                </div>
+                <p id="receive_partial_hint" class="hidden text-xs font-semibold text-amber-700">
+                    ⚠️ Receção Parcial — em falta: <span id="receive_missing_qty_display">—</span>
+                </p>
                 <div>
                     <label class="text-[10px] font-bold uppercase text-slate-400">Quantidade recebida</label>
-                    <input type="text" id="receive_quantity" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500" placeholder="Quantidade recebida">
+                    <input type="number" id="receive_quantity" min="0" step="any" oninput="updateReceiveModalQtyCompare()" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500" placeholder="Quantidade recebida">
                 </div>
                 <div>
                     <label class="text-[10px] font-bold uppercase text-slate-400">Data de receção</label>
@@ -1033,7 +1061,7 @@
             </div>
 
             <div class="flex gap-3">
-                <button type="button" onclick="closeReceiveModal()" class="flex-1 rounded-2xl border border-slate-300 py-3 font-bold">Cancelar</button>
+                <button type="button" onclick="closeReceiveConfirmationModal()" class="flex-1 rounded-2xl border border-slate-300 py-3 font-bold">Cancelar</button>
                 <button type="button" onclick="confirmReceive()" class="flex-1 rounded-2xl bg-emerald-600 py-3 text-white font-bold hover:bg-emerald-700">Confirmar Receção</button>
             </div>
         </div>
@@ -1366,15 +1394,14 @@
                     <div id="purchaseReceptionSummary" class="hidden rounded-2xl border border-teal-300 bg-teal-50 px-4 py-3 text-teal-900 space-y-2">
                         <div class="flex items-center justify-between gap-2">
                             <p class="text-xs font-bold uppercase tracking-wide">Receção</p>
-                            <span id="purchaseReceptionPartialBadge" class="hidden inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">Receção parcial</span>
+                            <span id="purchaseReceptionPartialBadge" class="hidden inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">⚠️ Receção Parcial</span>
                         </div>
-                        <div id="purchaseReceptionQtyCompare" class="hidden grid gap-1.5 text-sm sm:grid-cols-3">
+                        <div id="purchaseReceptionQtyCompare" class="grid gap-1.5 text-sm sm:grid-cols-3">
                             <p><span class="font-semibold">Quantidade pedida:</span> <span id="purchaseReceptionOrderedQty">—</span></p>
                             <p><span class="font-semibold">Quantidade recebida:</span> <span id="purchaseReceptionReceivedQty">—</span></p>
-                            <p><span class="font-semibold">Quantidade em falta:</span> <span id="purchaseReceptionMissingQty">—</span></p>
+                            <p id="purchaseReceptionMissingRow"><span class="font-semibold">Quantidade em falta:</span> <span id="purchaseReceptionMissingQty">—</span></p>
                         </div>
                         <div class="grid gap-1.5 text-sm">
-                            <p class="purchase-reception-received-only"><span class="font-semibold">Quantidade recebida:</span> <span id="purchaseReceptionQty">—</span></p>
                             <p><span class="font-semibold">Data da receção:</span> <span id="purchaseReceptionDate">—</span></p>
                             <p><span class="font-semibold">Rececionado por:</span> <span id="purchaseReceptionBy">—</span></p>
                             <p><span class="font-semibold">Data/Hora da ação:</span> <span id="purchaseReceptionAt">—</span></p>
@@ -3097,6 +3124,74 @@
             return item?.receivedQuantity ?? item?.received_quantity ?? '';
         }
 
+        function getOrderSupplier(item) {
+            const selected = String(item?.selectedSupplier ?? item?.selected_supplier ?? '').trim();
+            if (selected) return selected;
+            const quotes = getOrderQuotes(item);
+            const withSupplier = quotes.find(q => String(q?.supplier || '').trim());
+            return withSupplier ? String(withSupplier.supplier).trim() : '—';
+        }
+
+        function updateReceiveModalQtyCompare() {
+            const indexRaw = document.getElementById('receive_index')?.value;
+            const index = Number(indexRaw);
+            const item = Number.isFinite(index) ? shoppingList[index] : null;
+            const orderedRaw = item ? getOrderedQuantity(item) : '';
+            const orderedDisplay = String(orderedRaw || '—');
+            const receivedRaw = document.getElementById('receive_quantity')?.value.trim() || '';
+            const receivedDisplay = receivedRaw || '—';
+
+            const orderedEl = document.getElementById('receive_ordered_qty_display');
+            const receivedEl = document.getElementById('receive_received_qty_display');
+            const partialHint = document.getElementById('receive_partial_hint');
+            const missingEl = document.getElementById('receive_missing_qty_display');
+
+            if (orderedEl) orderedEl.textContent = orderedDisplay;
+            if (receivedEl) receivedEl.textContent = receivedDisplay;
+
+            const orderedNum = parseOrderQuantityNumber(orderedRaw);
+            const receivedNum = parseOrderQuantityNumber(receivedRaw);
+            const isPartial = orderedNum != null && receivedNum != null && receivedNum < orderedNum;
+
+            if (partialHint) partialHint.classList.toggle('hidden', !isPartial);
+            if (missingEl) {
+                if (isPartial && item) {
+                    missingEl.textContent = formatMissingQuantity({
+                        ...item,
+                        receivedQuantity: receivedRaw,
+                        received_quantity: receivedRaw
+                    }) || '—';
+                } else {
+                    missingEl.textContent = '—';
+                }
+            }
+        }
+
+        function fillReceiveOrderSummary(item) {
+            const productEl = document.getElementById('receive_summary_product');
+            const supplierEl = document.getElementById('receive_summary_supplier');
+            const orderedSummaryEl = document.getElementById('receive_summary_ordered_qty');
+            const orderedDisplayEl = document.getElementById('receive_ordered_qty_display');
+
+            const productName = String(item?.name || '—');
+            const supplierName = getOrderSupplier(item);
+            const orderedQty = String(getOrderedQuantity(item) || '—');
+
+            if (productEl) productEl.textContent = productName;
+            if (supplierEl) supplierEl.textContent = supplierName;
+            if (orderedSummaryEl) orderedSummaryEl.textContent = orderedQty;
+            if (orderedDisplayEl) orderedDisplayEl.textContent = orderedQty;
+        }
+
+        function clearReceiveOrderSummary() {
+            ['receive_summary_product', 'receive_summary_supplier', 'receive_summary_ordered_qty', 'receive_ordered_qty_display', 'receive_received_qty_display', 'receive_missing_qty_display']
+                .forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = '—';
+                });
+            document.getElementById('receive_partial_hint')?.classList.add('hidden');
+        }
+
         function isPartialReception(item) {
             const ordered = parseOrderQuantityNumber(getOrderedQuantity(item));
             const received = parseOrderQuantityNumber(getReceivedQuantity(item));
@@ -4790,9 +4885,13 @@
                 return;
             }
 
-            if (novoStatus === 'Rececionado' && item.status === 'Compra Feita') {
+            if (novoStatus === 'Rececionado') {
+                if (item.status === 'Rececionado') {
+                    if (selectEl) selectEl.value = item.status;
+                    return;
+                }
                 if (selectEl) selectEl.value = item.status;
-                openReceiveModal(index);
+                openReceiveConfirmationModal(index, selectEl);
                 return;
             }
 
@@ -4809,6 +4908,11 @@
         }
 
         async function alterarStatusPedido(index, novoStatus) {
+            if (novoStatus === 'Rececionado') {
+                console.warn('Rececionado must be confirmed via confirmReceive().');
+                return;
+            }
+
             const previousStatus = shoppingList[index].status;
             shoppingList[index].status = novoStatus;
 
@@ -5124,15 +5228,25 @@
                 receivedRaw
             );
             if (receivedStamp || receivedKey || getReceivedQuantity(item)) {
-                const qtyDetail = getReceivedQuantity(item)
-                    ? `Qtd recebida: ${getReceivedQuantity(item)}`
-                    : '';
+                const orderedQty = getOrderedQuantity(item);
+                const receivedQty = getReceivedQuantity(item);
+                const partial = isPartialReception(item);
+                const missingQty = partial ? formatMissingQuantity(item) : null;
+                const qtyParts = [];
+                if (orderedQty) qtyParts.push(`Pedida: ${orderedQty}`);
+                if (receivedQty) qtyParts.push(`Recebida: ${receivedQty}`);
+                if (missingQty) qtyParts.push(`Em falta: ${missingQty}`);
+                const notes = String(item?.receivedNotes || item?.received_notes || '').trim();
                 events.push({
                     sortKey: receivedKey || '9999-99-99',
                     order: 6,
-                    title: 'Rececionado',
-                    detail: [receivedStamp?.label || formatPurchaseTimelineDate(receivedKey), qtyDetail].filter(Boolean).join(' · '),
-                    accent: 'emerald'
+                    title: partial ? 'Rececionado (parcial)' : 'Rececionado',
+                    detail: [
+                        receivedStamp?.label || formatPurchaseTimelineDate(receivedKey),
+                        qtyParts.join(' · '),
+                        notes ? `Obs: ${notes}` : ''
+                    ].filter(Boolean).join(' · '),
+                    accent: partial ? 'amber' : 'emerald'
                 });
             }
 
@@ -5629,23 +5743,14 @@
             const partialBadge = document.getElementById('purchaseReceptionPartialBadge');
             if (partialBadge) partialBadge.classList.toggle('hidden', !partial);
 
-            const qtyCompare = document.getElementById('purchaseReceptionQtyCompare');
-            const receivedOnly = panel.querySelector('.purchase-reception-received-only');
-            if (partial && qtyCompare) {
-                qtyCompare.classList.remove('hidden');
-                if (receivedOnly) receivedOnly.classList.add('hidden');
-                const orderedEl = document.getElementById('purchaseReceptionOrderedQty');
-                const receivedEl = document.getElementById('purchaseReceptionReceivedQty');
-                const missingEl = document.getElementById('purchaseReceptionMissingQty');
-                if (orderedEl) orderedEl.textContent = orderedQty;
-                if (receivedEl) receivedEl.textContent = receivedQty;
-                if (missingEl) missingEl.textContent = missing != null ? missing : '—';
-            } else {
-                if (qtyCompare) qtyCompare.classList.add('hidden');
-                if (receivedOnly) receivedOnly.classList.remove('hidden');
-                const qtyEl = document.getElementById('purchaseReceptionQty');
-                if (qtyEl) qtyEl.textContent = receivedQty;
-            }
+            const orderedEl = document.getElementById('purchaseReceptionOrderedQty');
+            const receivedEl = document.getElementById('purchaseReceptionReceivedQty');
+            const missingEl = document.getElementById('purchaseReceptionMissingQty');
+            const missingRow = document.getElementById('purchaseReceptionMissingRow');
+            if (orderedEl) orderedEl.textContent = orderedQty;
+            if (receivedEl) receivedEl.textContent = receivedQty;
+            if (missingEl) missingEl.textContent = partial && missing != null ? missing : '—';
+            if (missingRow) missingRow.classList.toggle('hidden', !partial);
 
             const dateEl = document.getElementById('purchaseReceptionDate');
             if (dateEl) {
@@ -5673,34 +5778,62 @@
             }
         }
 
-        function openReceiveModal(index) {
+        let pendingReceiveStatusChange = null;
+
+        function openReceiveConfirmationModal(index, selectEl) {
             const item = shoppingList[index];
             if (!item) return;
+
+            pendingReceiveStatusChange = {
+                index,
+                selectEl: selectEl || null,
+                previousStatus: item.status
+            };
+
+            const orderedQty = parseOrderQuantityNumber(getOrderedQuantity(item));
             document.getElementById('receive_index').value = index;
-            document.getElementById('receive_quantity').value = getOrderedQuantity(item) || '';
+            fillReceiveOrderSummary(item);
+            document.getElementById('receive_quantity').value = orderedQty != null ? orderedQty : '';
             document.getElementById('receive_date').value = getTodayDateString();
             document.getElementById('receive_notes').value = item.receivedNotes || item.received_notes || '';
+            updateReceiveModalQtyCompare();
             openModal('modalConfirmarRececao');
         }
 
-        function closeReceiveModal() {
+        function closeReceiveConfirmationModal() {
+            if (pendingReceiveStatusChange?.selectEl) {
+                pendingReceiveStatusChange.selectEl.value = pendingReceiveStatusChange.previousStatus;
+            }
+            pendingReceiveStatusChange = null;
+
             closeModal('modalConfirmarRececao');
             document.getElementById('receive_index').value = '';
             document.getElementById('receive_quantity').value = '';
             document.getElementById('receive_date').value = '';
             document.getElementById('receive_notes').value = '';
+            clearReceiveOrderSummary();
+        }
+
+        function openReceiveModal(index, selectEl) {
+            openReceiveConfirmationModal(index, selectEl);
+        }
+
+        function closeReceiveModal() {
+            closeReceiveConfirmationModal();
         }
 
         async function confirmReceive() {
-            const index = document.getElementById('receive_index').value;
-            if (index === '') return;
+            const index = Number(document.getElementById('receive_index').value);
+            if (!Number.isFinite(index) || index < 0 || !shoppingList[index]) return;
 
-            const receivedQuantity = document.getElementById('receive_quantity').value.trim();
+            const receivedQuantityRaw = document.getElementById('receive_quantity').value.trim();
             const receivedDate = document.getElementById('receive_date').value.trim();
             const receivedNotes = document.getElementById('receive_notes').value.trim();
 
-            if (!receivedQuantity) return alert('Indique a quantidade recebida.');
+            if (!receivedQuantityRaw) return alert('Indique a quantidade recebida.');
             if (!receivedDate) return alert('Indique a data de receção.');
+
+            const receivedQuantity = receivedQuantityRaw;
 
             const receivedBy = getCurrentUserName();
             const receivedAt = getNowDateTimeString();
@@ -5739,8 +5872,9 @@
                 return alert('Erro ao guardar a receção no Supabase.');
             }
 
+            pendingReceiveStatusChange = null;
             shoppingList = await loadShoppingList();
-            closeReceiveModal();
+            closeReceiveConfirmationModal();
 
             if (currentPurchaseTab === 'submitted' || currentPurchaseTab === 'to-receive') {
                 switchTab('tab-compras-rececionados');
@@ -5776,7 +5910,7 @@
                 if (item.status === 'Pedido Cancelado') badgeClass = "bg-rose-100 text-rose-800 border-rose-300";
 
                 const partialBadge = isPartialReception(item)
-                    ? `<span class="text-[9px] px-2 py-0.5 rounded-full font-semibold border border-amber-300 bg-amber-50 text-amber-800">Receção parcial</span>`
+                    ? `<span class="text-[9px] px-2 py-0.5 rounded-full font-semibold border border-amber-300 bg-amber-50 text-amber-800">⚠️ Receção Parcial</span>`
                     : '';
 
                 return `
@@ -6062,7 +6196,7 @@
 
                     const statusEditable = isOrderStatusEditable(item.status);
                     const partialReceptionBadge = isPartialReception(item)
-                        ? `<span class="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800">Receção parcial</span>`
+                        ? `<span class="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800">⚠️ Receção Parcial</span>`
                         : '';
 
                     const statusCell = statusEditable
