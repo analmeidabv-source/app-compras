@@ -4877,8 +4877,23 @@
 
         function handleStatusChange(index, novoStatus, selectEl) {
             const item = shoppingList[index];
+            console.log('Estado alterado', {
+                index,
+                novoStatus,
+                itemStatus: item?.status,
+                itemExists: Boolean(item),
+                editable: item ? isOrderStatusEditable(item.status) : false,
+                novoStatusCodes: [...String(novoStatus || '')].map(c => c.charCodeAt(0)),
+                itemStatusCodes: [...String(item?.status || '')].map(c => c.charCodeAt(0))
+            });
+
+            if (!item) {
+                console.log('Fluxo falhou: shoppingList[index] não existe');
+                return;
+            }
 
             if (!isOrderStatusEditable(item.status)) {
+                console.log('Fluxo falhou: estado atual não é editável', item.status);
                 if (selectEl) selectEl.value = item.status;
                 return;
             }
@@ -4902,13 +4917,26 @@
             }
 
             if (novoStatus === 'Em Laboratório') {
+                console.log('Entrou no bloco novoStatus === Em Laboratório', {
+                    itemStatus: item.status,
+                    equalsCompraFeita: item.status === 'Compra Feita'
+                });
                 if (item.status === 'Compra Feita') {
+                    console.log('Entrou na condição Compra Feita → Em Laboratório');
                     if (selectEl) selectEl.value = item.status;
+                    console.log('A chamar openReceiveConfirmationModal()');
                     openReceiveConfirmationModal(index, selectEl);
                     return;
                 }
+                console.log('Não entrou na condição Compra Feita → Em Laboratório porque item.status !== Compra Feita');
+                if (selectEl) selectEl.value = item.status;
+                alert("O pedido deve estar em 'Compra Feita' antes de poder ser rececionado e enviado para laboratório.");
+                return;
+            } else {
+                console.log('Não entrou no bloco Em Laboratório (novoStatus diferente)', JSON.stringify(novoStatus));
             }
 
+            console.log('A cair em alterarStatusPedido()', { index, novoStatus, itemStatus: item.status });
             alterarStatusPedido(index, novoStatus);
 
             if (
@@ -5800,8 +5828,12 @@
         let pendingReceiveStatusChange = null;
 
         function openReceiveConfirmationModal(index, selectEl) {
+            console.log('openReceiveConfirmationModal() executada', { index, hasSelectEl: Boolean(selectEl) });
             const item = shoppingList[index];
-            if (!item) return;
+            if (!item) {
+                console.log('Fluxo falhou dentro de openReceiveConfirmationModal: item inexistente', index);
+                return;
+            }
 
             pendingReceiveStatusChange = {
                 index,
@@ -5809,19 +5841,39 @@
                 previousStatus: item.status
             };
 
-            const orderedQty = parseOrderQuantityNumber(getOrderedQuantity(item));
-            document.getElementById('receive_index').value = String(index);
-            fillReceiveOrderSummary(item);
-            document.getElementById('receive_quantity').value = orderedQty != null ? orderedQty : '';
-            document.getElementById('receive_date').value = getTodayDateString();
-            document.getElementById('receive_notes').value = item.receivedNotes || item.received_notes || '';
-            updateReceiveModalQtyCompare();
+            try {
+                const orderedQty = parseOrderQuantityNumber(getOrderedQuantity(item));
+                document.getElementById('receive_index').value = String(index);
+                fillReceiveOrderSummary(item);
+                document.getElementById('receive_quantity').value = orderedQty != null ? orderedQty : '';
+                document.getElementById('receive_date').value = getTodayDateString();
+                document.getElementById('receive_notes').value = item.receivedNotes || item.received_notes || '';
+                updateReceiveModalQtyCompare();
+            } catch (error) {
+                console.log('Fluxo falhou ao preencher o modal Confirmar Receção', error);
+                return;
+            }
 
             const modal = document.getElementById('modalConfirmarRececao');
-            if (!modal) return;
+            console.log('Elemento modalConfirmarRececao', {
+                found: Boolean(modal),
+                className: modal?.className,
+                displayBefore: modal ? getComputedStyle(modal).display : null
+            });
+            if (!modal) {
+                console.log('Fluxo falhou: #modalConfirmarRececao não existe no DOM');
+                return;
+            }
             modal.classList.remove('hidden');
             modal.style.display = 'flex';
             modal.setAttribute('aria-hidden', 'false');
+            console.log('Modal aberto', {
+                className: modal.className,
+                displayAfter: getComputedStyle(modal).display,
+                visibility: getComputedStyle(modal).visibility,
+                opacity: getComputedStyle(modal).opacity,
+                zIndex: getComputedStyle(modal).zIndex
+            });
         }
 
         function closeReceiveConfirmationModal() {
