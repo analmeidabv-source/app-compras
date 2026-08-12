@@ -646,6 +646,12 @@
                             </select>
                         </div>
                         <div>
+                            <label class="text-[10px] font-bold uppercase text-slate-400">Unidade</label>
+                            <select id="newUserUnit" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-200 bg-white">
+                                <option value="">Selecionar unidade...</option>
+                            </select>
+                        </div>
+                        <div>
                             <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Unidades atribuídas</label>
                             <button type="button" id="userUnitsSummaryBtn" onclick="openUserUnitsPicker()"
                                 class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-700 outline-none hover:border-violet-300 focus:ring-2 focus:ring-violet-200 transition flex items-center justify-between gap-2">
@@ -750,6 +756,7 @@
                                         <tr>
                                             <th class="text-left">Utilizador</th>
                                             <th class="text-left">Perfil de acesso</th>
+                                            <th class="text-left">Unidade</th>
                                             <th class="text-left">Estado</th>
                                             <th class="text-left">Criado em</th>
                                             <th class="text-left">Criado por</th>
@@ -1514,11 +1521,42 @@
         function mapUserRecord(user) {
             if (!user) return null;
             const assignedUnits = normalizeAssignedUnits(user.assigned_units ?? user.assignedUnits);
+            const unit = user.unit != null && String(user.unit).trim() !== ''
+                ? String(user.unit).trim()
+                : null;
             return {
                 ...user,
+                unit,
                 assignedUnits,
                 assigned_units: assignedUnits
             };
+        }
+
+        function getAppUnitOptions() {
+            return Array.isArray(purchaseLabOptions) ? [...purchaseLabOptions] : [];
+        }
+
+        function formatUserUnitLabel(unit) {
+            const value = String(unit || '').trim();
+            return value || 'Sem unidade';
+        }
+
+        function populateUserUnitSelect(selectEl, selectedUnit = '', { includeEmpty = true, emptyLabel = 'Selecionar unidade...' } = {}) {
+            if (!selectEl) return;
+            const options = getAppUnitOptions();
+            const current = String(selectedUnit || '').trim();
+            const parts = [];
+            if (includeEmpty) {
+                parts.push(`<option value="">${escapeHtml(emptyLabel)}</option>`);
+            }
+            options.forEach(unit => {
+                parts.push(`<option value="${escapeHtml(unit)}" ${current === unit ? 'selected' : ''}>${escapeHtml(unit)}</option>`);
+            });
+            if (current && !options.includes(current)) {
+                parts.push(`<option value="${escapeHtml(current)}" selected>${escapeHtml(current)}</option>`);
+            }
+            selectEl.innerHTML = parts.join('');
+            selectEl.value = current;
         }
 
         const unitsPickerConfigs = {
@@ -2170,7 +2208,7 @@
                 if (summary) summary.textContent = 'Acesso restrito';
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="px-6 py-10 text-center text-sm text-slate-400">
+                        <td colspan="7" class="px-6 py-10 text-center text-sm text-slate-400">
                             Apenas administradores podem aceder à gestão de utilizadores.
                         </td>
                     </tr>`;
@@ -2178,6 +2216,7 @@
             }
 
             setupUserManagementListeners();
+            populateUserUnitSelect(document.getElementById('newUserUnit'), document.getElementById('newUserUnit')?.value || '');
 
             const allUsers = await listUsers();
             const searchText = (document.getElementById('userSearch')?.value || '').trim().toLowerCase();
@@ -2188,6 +2227,7 @@
                     user.displayName,
                     USER_PROFILES[user.role]?.label,
                     user.role,
+                    user.unit,
                     user.createdBy
                 ].join(' ').toLowerCase();
                 return haystack.includes(searchText);
@@ -2201,7 +2241,7 @@
             if (filtered.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="px-6 py-10 text-center text-sm text-slate-400">
+                        <td colspan="7" class="px-6 py-10 text-center text-sm text-slate-400">
                             ${allUsers.length === 0
                                 ? 'Ainda não existem utilizadores além da sua conta.'
                                 : 'Nenhum utilizador corresponde à pesquisa.'}
@@ -2217,6 +2257,15 @@
                 const roleOptions = Object.entries(USER_PROFILES).map(([key, profile]) => `
                     <option value="${key}" ${currentRole === key ? 'selected' : ''}>${escapeHtml(profile.label)}</option>
                 `).join('');
+                const unitOptions = [
+                    `<option value="">Sem unidade</option>`,
+                    ...getAppUnitOptions().map(unit => `
+                        <option value="${escapeHtml(unit)}" ${user.unit === unit ? 'selected' : ''}>${escapeHtml(unit)}</option>
+                    `),
+                    ...(user.unit && !getAppUnitOptions().includes(user.unit)
+                        ? [`<option value="${escapeHtml(user.unit)}" selected>${escapeHtml(user.unit)}</option>`]
+                        : [])
+                ].join('');
                 const statusMeta = getUserStatusMeta(user);
                 const statusBadge = `<span class="inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusMeta.className}">${statusMeta.label}</span>`;
                 const rowMutedClass = isUserAccessRevoked(user) ? 'opacity-70' : '';
@@ -2234,6 +2283,14 @@
                                 class="user-role-select rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none focus:ring-2 focus:ring-violet-200 cursor-pointer"
                                 ${isUserAccessRevoked(user) ? 'disabled' : ''}
                             >${roleOptions}</select>
+                        </td>
+                        <td>
+                            <select
+                                data-user-unit-select
+                                data-username="${encodedUsername}"
+                                class="user-role-select rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none focus:ring-2 focus:ring-violet-200 cursor-pointer min-w-[9rem]"
+                                ${isUserAccessRevoked(user) ? 'disabled' : ''}
+                            >${unitOptions}</select>
                         </td>
                         <td>${statusBadge}</td>
                         <td class="text-xs font-mono text-slate-500">${user.createdAt ? formatAlertDate(user.createdAt) : '—'}</td>
@@ -2270,9 +2327,16 @@
             if (!tbody || userManagementListenersAttached) return;
 
             tbody.addEventListener('change', event => {
-                const select = event.target.closest('[data-user-role-select]');
-                if (!select) return;
-                changeUserRoleByUsername(decodeDataUsername(select.dataset.username), select.value, select);
+                const roleSelect = event.target.closest('[data-user-role-select]');
+                if (roleSelect) {
+                    changeUserRoleByUsername(decodeDataUsername(roleSelect.dataset.username), roleSelect.value, roleSelect);
+                    return;
+                }
+
+                const unitSelect = event.target.closest('[data-user-unit-select]');
+                if (unitSelect) {
+                    changeUserUnitByUsername(decodeDataUsername(unitSelect.dataset.username), unitSelect.value, unitSelect);
+                }
             });
 
             tbody.addEventListener('click', event => {
@@ -2301,6 +2365,35 @@
             });
 
             userManagementListenersAttached = true;
+        }
+
+        async function changeUserUnitByUsername(username, newUnit, selectEl) {
+            if (!canManageUsers()) return;
+
+            const user = await findUser(username);
+            if (!user) return;
+
+            const unitValue = String(newUnit || '').trim();
+            const allowed = getAppUnitOptions();
+            if (unitValue && !allowed.includes(unitValue) && unitValue !== (user.unit || '')) {
+                if (selectEl) selectEl.value = user.unit || '';
+                return alert('Unidade inválida.');
+            }
+
+            const nextUnit = unitValue || null;
+            if ((user.unit || null) === nextUnit) return;
+
+            try {
+                const updated = await updateUserFields(username, { unit: nextUnit });
+                if (currentUser?.username === user.username && updated) {
+                    currentUser = updated;
+                }
+                await renderUserManagement();
+            } catch (error) {
+                console.warn('Erro ao atualizar unidade no Supabase.', error);
+                if (selectEl) selectEl.value = user.unit || '';
+                alert('Não foi possível atualizar a unidade.');
+            }
         }
 
         async function changeUserRoleByUsername(username, newRole, selectEl) {
@@ -2433,16 +2526,20 @@
 
             const username = normalizeUsername(document.getElementById('newUserUsername')?.value);
             const role = document.getElementById('newUserRole')?.value || 'analista';
+            const unit = String(document.getElementById('newUserUnit')?.value || '').trim();
             const assigned_units = getSelectedUserUnits();
 
             if (!username) return alert('Indique o nome de utilizador.');
             if (!USER_PROFILES[role]) return alert('Perfil inválido.');
+            if (!unit) return alert('Selecione a unidade.');
+            if (!getAppUnitOptions().includes(unit)) return alert('Unidade inválida.');
 
             try {
                 if (existingUsername) {
                     const target = normalizeUsername(existingUsername);
                     await updateUserFields(target, {
                         role,
+                        unit,
                         assigned_units
                     });
                 } else {
@@ -2451,6 +2548,7 @@
                         username,
                         displayName: username,
                         role,
+                        unit,
                         passwordHash: null,
                         accessRevoked: false,
                         createdAt: getTodayDateString(),
@@ -2461,6 +2559,7 @@
 
                 document.getElementById('newUserUsername').value = '';
                 document.getElementById('newUserRole').value = 'analista';
+                populateUserUnitSelect(document.getElementById('newUserUnit'), '');
                 setSelectedUserUnits([]);
                 await renderUserManagement();
             } catch (error) {
