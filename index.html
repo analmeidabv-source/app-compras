@@ -3111,6 +3111,21 @@
                 || status === 'Rececionado';
         }
 
+        /** Status options for the order dropdown — Rececionado is never offered as a target (legacy rows may still show it). */
+        function buildOrderStatusOptions(currentStatus) {
+            const standard = ['Pendente', 'Pedido de Cotação', 'Compra Feita', 'Em Laboratório', 'Pedido Cancelado'];
+            if (currentStatus === 'Rececionado') {
+                return ['Rececionado', 'Em Laboratório'];
+            }
+            return standard;
+        }
+
+        function renderOrderStatusSelectOptions(currentStatus) {
+            return buildOrderStatusOptions(currentStatus)
+                .map(status => `<option value="${status}" ${currentStatus === status ? 'selected' : ''}>${status}</option>`)
+                .join('');
+        }
+
         function parseOrderQuantityNumber(value) {
             const match = String(value ?? '').replace(',', '.').match(/-?\d+(?:\.\d+)?/);
             return match ? Number(match[0]) : null;
@@ -4885,11 +4900,7 @@
                 return;
             }
 
-            if (novoStatus === 'Rececionado') {
-                if (item.status === 'Rececionado') {
-                    if (selectEl) selectEl.value = item.status;
-                    return;
-                }
+            if (novoStatus === 'Em Laboratório' && item.status === 'Compra Feita') {
                 if (selectEl) selectEl.value = item.status;
                 openReceiveConfirmationModal(index, selectEl);
                 return;
@@ -4898,7 +4909,7 @@
             alterarStatusPedido(index, novoStatus);
 
             if (
-                (novoStatus === 'Em Laboratório' || novoStatus === 'Rececionado')
+                novoStatus === 'Em Laboratório'
                 && (currentPurchaseTab === 'submitted' || currentPurchaseTab === 'to-receive')
             ) {
                 switchTab('tab-compras-rececionados');
@@ -4908,12 +4919,17 @@
         }
 
         async function alterarStatusPedido(index, novoStatus) {
+            const previousStatus = shoppingList[index].status;
+
+            if (novoStatus === 'Em Laboratório' && previousStatus === 'Compra Feita') {
+                console.warn('Em Laboratório from Compra Feita must be confirmed via confirmReceive().');
+                return;
+            }
             if (novoStatus === 'Rececionado') {
-                console.warn('Rececionado must be confirmed via confirmReceive().');
+                console.warn('Rececionado is no longer a selectable status.');
                 return;
             }
 
-            const previousStatus = shoppingList[index].status;
             shoppingList[index].status = novoStatus;
 
             const updates = { status: shoppingList[index].status };
@@ -5838,7 +5854,7 @@
             const receivedBy = getCurrentUserName();
             const receivedAt = getNowDateTimeString();
 
-            shoppingList[index].status = 'Rececionado';
+            shoppingList[index].status = 'Em Laboratório';
             shoppingList[index].receivedQuantity = receivedQuantity;
             shoppingList[index].received_quantity = receivedQuantity;
             shoppingList[index].receivedDate = receivedDate;
@@ -5850,11 +5866,17 @@
             shoppingList[index].receivedAt = receivedAt;
             shoppingList[index].received_at = receivedAt;
 
+            const labPayload = setOrderActorTimestamp(
+                shoppingList[index],
+                'labBy', 'lab_by',
+                'labAt', 'lab_at'
+            );
+
             const item = shoppingList[index];
             if (!item?.id) return alert('Pedido inválido.');
 
             const { error } = await updateShoppingListRow(item.id, {
-                status: 'Rececionado',
+                status: 'Em Laboratório',
                 received_quantity: receivedQuantity,
                 received_date: receivedDate,
                 received_notes: receivedNotes || null,
@@ -5864,7 +5886,8 @@
                 receivedDate,
                 receivedNotes: receivedNotes || null,
                 receivedBy,
-                receivedAt
+                receivedAt,
+                ...labPayload
             });
 
             if (error) {
@@ -6202,12 +6225,7 @@
                     const statusCell = statusEditable
                         ? `
                             <select onchange="handleStatusChange(${item.originalIndex}, this.value, this)" class="status-select rounded-full border px-3 py-1.5 text-[10px] font-bold outline-none ${statusClasses[item.status] || 'bg-slate-100 text-slate-700 border-slate-300'}">
-                                <option value="Pendente" ${item.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
-                                <option value="Pedido de Cotação" ${item.status === 'Pedido de Cotação' ? 'selected' : ''}>Pedido de Cotação</option>
-                                <option value="Compra Feita" ${item.status === 'Compra Feita' ? 'selected' : ''}>Compra Feita</option>
-                                <option value="Rececionado" ${item.status === 'Rececionado' ? 'selected' : ''}>Rececionado</option>
-                                <option value="Em Laboratório" ${item.status === 'Em Laboratório' ? 'selected' : ''}>Em Laboratório</option>
-                                <option value="Pedido Cancelado" ${item.status === 'Pedido Cancelado' ? 'selected' : ''}>Pedido Cancelado</option>
+                                ${renderOrderStatusSelectOptions(item.status)}
                             </select>
                         `
                         : `
