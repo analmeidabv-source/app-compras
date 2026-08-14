@@ -7970,6 +7970,10 @@
         }
 
         function startSupabaseRealtime() {
+            console.log('[Realtime] startSupabaseRealtime() chamado', {
+                alreadyActive: realtimeActive,
+                tables: REALTIME_PHYSICAL_TABLES.map(entry => entry.table)
+            });
             if (realtimeActive) return;
 
             const subscribedPhysical = new Set();
@@ -7978,16 +7982,28 @@
                 if (subscribedPhysical.has(table)) return;
                 subscribedPhysical.add(table);
 
+                const channelName = `qcshop:${table}`;
+                console.log('[Realtime] A criar canal', { channel: channelName, table, group });
+
                 const channel = supabaseClient
-                    .channel(`qcshop:${table}`)
+                    .channel(channelName)
                     .on(
                         'postgres_changes',
                         { event: '*', schema: 'public', table },
-                        () => scheduleRealtimeGroupRefresh(group)
+                        (payload) => {
+                            console.log('[Realtime] Evento recebido', {
+                                event: payload?.eventType,
+                                table: payload?.table || table,
+                                schema: payload?.schema,
+                                channel: channelName
+                            });
+                            scheduleRealtimeGroupRefresh(group);
+                        }
                     )
                     .subscribe((status, err) => {
+                        console.log('[Realtime] Estado do canal', { channel: channelName, table, status });
                         if (status === 'SUBSCRIBED') {
-                            console.log(`[Realtime] Subscrito: ${table}`);
+                            console.log(`[Realtime] SUBSCRIBED: ${table} (${channelName})`);
                         } else if (status === 'CHANNEL_ERROR') {
                             console.warn(`[Realtime] Erro no canal ${table}:`, err);
                         }
@@ -7997,6 +8013,9 @@
             });
 
             realtimeActive = true;
+            console.log('[Realtime] Subscriptions iniciadas', {
+                channels: Array.from(realtimeChannels.keys())
+            });
         }
 
         function getRealtimeSubscribedTables() {
