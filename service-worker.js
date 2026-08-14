@@ -1,4 +1,5 @@
 const CACHE_NAME = 'qcshop-pwa-v1';
+
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -6,9 +7,10 @@ const PRECACHE_URLS = [
   './manifest.json',
   './supabase.js',
   './inventory.js',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icon-192.png',
+  './icon-512.png'
 ];
+
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
@@ -18,6 +20,7 @@ self.addEventListener('install', (event) => {
     await self.skipWaiting();
   })());
 });
+
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
@@ -29,11 +32,14 @@ self.addEventListener('activate', (event) => {
     await self.clients.claim();
   })());
 });
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
+
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
   event.respondWith((async () => {
     try {
       const networkResponse = await fetch(request);
