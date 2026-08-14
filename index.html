@@ -237,7 +237,11 @@
                 </button>
             </div>
 
-            <div class="px-3 pb-4 pt-1 mt-auto border-t border-violet-100">
+            <div class="px-3 pb-4 pt-1 mt-auto border-t border-violet-100 space-y-1">
+                <button onclick="openAboutModal()" class="w-full text-left px-1 py-1 text-[10px] text-slate-500 hover:text-violet-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-info text-[9px]"></i>
+                    Sobre
+                </button>
                 <button onclick="logout()" class="w-full text-left px-1 py-1 text-[10px] text-slate-500 hover:text-violet-700 transition flex items-center gap-1.5">
                     <i class="fa-solid fa-right-from-bracket text-[9px]"></i>
                     Terminar sessão
@@ -867,6 +871,10 @@
             </div>
             <div id="historyListContainer" class="p-4 bg-slate-50 flex-1 overflow-y-auto space-y-4"></div>
         </div>
+
+        <button type="button" id="appVersionFooter" onclick="openAboutModal()" class="fixed bottom-3 right-3 z-[40] rounded-full border border-violet-200 bg-white/95 px-3 py-1.5 text-[11px] font-semibold text-violet-700 shadow-sm hover:bg-violet-50 hover:border-violet-300 transition backdrop-blur-sm">
+            QCShop v1.0.1
+        </button>
     </div>
 
     <div id="modalAddProduct" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
@@ -1124,6 +1132,45 @@
         </div>
     </div>
 
+    <div id="modalAbout" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 border border-violet-100">
+                        <i class="fa-solid fa-circle-info text-violet-600 text-sm"></i>
+                    </div>
+                    <h3 class="text-sm font-semibold text-slate-900">Sobre</h3>
+                </div>
+                <button onclick="closeModal('modalAbout')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+            </div>
+            <div class="p-5 space-y-4 text-sm text-slate-700">
+                <div class="text-center">
+                    <p id="aboutAppName" class="text-xl font-bold text-violet-900">QCShop</p>
+                    <p id="aboutAppTagline" class="text-xs uppercase tracking-[0.18em] text-slate-500 mt-1">Gestão de Compras</p>
+                </div>
+                <div class="rounded-xl border border-violet-100 bg-violet-50 px-4 py-3 space-y-1.5">
+                    <p><span class="font-semibold text-slate-800">Versão atual:</span> <span id="aboutAppVersion">—</span></p>
+                    <p><span class="font-semibold text-slate-800">Última atualização:</span> <span id="aboutAppLastUpdated">—</span></p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-semibold uppercase text-slate-400 mb-1.5">Desenvolvido por</p>
+                    <ul id="aboutDevelopersList" class="space-y-1 text-slate-700"></ul>
+                </div>
+                <div class="space-y-1">
+                    <p><span class="font-semibold text-slate-800">Empresa:</span> <span id="aboutCompany">—</span></p>
+                    <p id="aboutCopyright" class="text-xs text-slate-500">© 2026</p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-semibold uppercase text-slate-400 mb-1.5">Histórico de versões</p>
+                    <div id="aboutVersionHistory" class="max-h-36 overflow-y-auto space-y-2"></div>
+                </div>
+            </div>
+            <div class="px-5 py-4 border-t border-slate-100 bg-slate-50">
+                <button onclick="closeModal('modalAbout')" class="w-full rounded-lg bg-[#8B7EC8] px-3 py-2.5 text-sm font-semibold text-white hover:bg-[#7A6BB0] transition">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modalDescarte" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-shrink-0">
@@ -1159,9 +1206,10 @@
                     <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Data do descarte</label>
                     <input type="date" id="waste_date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-violet-200">
                 </div>
-                <div>
-                    <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Registado por</label>
-                    <input type="text" id="waste_registered_by" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-violet-200" placeholder="Nome da pessoa responsável">
+                <div id="wasteEditAuditPanel" class="hidden rounded-lg border border-violet-200 bg-violet-50 px-3 py-2.5 text-left">
+                    <p class="text-[10px] font-semibold uppercase text-violet-700">Última edição</p>
+                    <p class="mt-1 text-xs text-violet-900"><span class="font-semibold">Última edição por:</span> <span id="wasteAuditUpdatedBy">—</span></p>
+                    <p class="text-xs text-violet-900"><span class="font-semibold">Última edição em:</span> <span id="wasteAuditUpdatedAt">—</span></p>
                 </div>
                 <div>
                     <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Notas (opcional)</label>
@@ -2179,6 +2227,62 @@
             clearSession();
             currentProfile = 'analista';
             showLoginScreen('login');
+        }
+
+        function getAppInfo() {
+            return window.QCSHOP_APP_INFO || window.QCSHOP_VERSION || {};
+        }
+
+        function getAppVersionLabel(info = getAppInfo()) {
+            const name = info.appName || 'QCShop';
+            const version = info.version ? `v${info.version}` : '';
+            return [name, version].filter(Boolean).join(' ');
+        }
+
+        function renderAppVersionFooter() {
+            const footer = document.getElementById('appVersionFooter');
+            if (!footer) return;
+            footer.textContent = getAppVersionLabel();
+        }
+
+        function formatVersionDate(dateStr) {
+            if (!dateStr) return '—';
+            const parts = String(dateStr).split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return dateStr;
+        }
+
+        function openAboutModal() {
+            const info = getAppInfo();
+            document.getElementById('aboutAppName').textContent = info.appName || 'QCShop';
+            document.getElementById('aboutAppTagline').textContent = info.description || info.tagline || 'Gestão de Compras';
+            document.getElementById('aboutAppVersion').textContent = info.version ? `v${info.version}` : '—';
+            document.getElementById('aboutAppLastUpdated').textContent = formatVersionDate(info.lastUpdated);
+
+            const developersList = document.getElementById('aboutDevelopersList');
+            if (developersList) {
+                const developers = Array.isArray(info.developers) ? info.developers : [];
+                developersList.innerHTML = developers.length
+                    ? developers.map(name => `<li>${escapeHtml(name)}</li>`).join('')
+                    : '<li class="text-slate-400">—</li>';
+            }
+
+            document.getElementById('aboutCompany').textContent = info.company || '—';
+            document.getElementById('aboutCopyright').textContent = `© ${info.copyrightYear || new Date().getFullYear()}`;
+
+            const historyEl = document.getElementById('aboutVersionHistory');
+            if (historyEl) {
+                const history = Array.isArray(info.changelog) ? info.changelog : (Array.isArray(info.history) ? info.history : []);
+                historyEl.innerHTML = history.length
+                    ? history.map(entry => `
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                            <p class="text-xs font-semibold text-slate-800">v${escapeHtml(entry.version || '—')} · ${escapeHtml(formatVersionDate(entry.date))}</p>
+                            ${entry.summary ? `<p class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(entry.summary)}</p>` : ''}
+                        </div>`).join('')
+                    : '<p class="text-xs text-slate-400 italic">Sem histórico disponível.</p>';
+            }
+
+            openModal('modalAbout');
         }
 
         function openUserManagement() {
@@ -3576,6 +3680,10 @@
                 quantity: item.quantity,
                 date: item.date,
                 registeredBy: item.registered_by,
+                createdBy: item.createdBy ?? item.created_by ?? item.registered_by ?? null,
+                createdAt: item.createdAt ?? item.created_at ?? null,
+                updatedBy: item.updatedBy ?? item.updated_by ?? null,
+                updatedAt: item.updatedAt ?? item.updated_at ?? null,
                 notes: item.notes
             }));
         }
@@ -3644,7 +3752,11 @@
                 product: item.product,
                 quantity: item.quantity,
                 date: item.date,
-                registered_by: item.registeredBy,
+                registered_by: item.registeredBy ?? item.createdBy ?? null,
+                created_by: item.createdBy ?? item.registeredBy ?? null,
+                created_at: item.createdAt ?? null,
+                updated_by: item.updatedBy ?? null,
+                updated_at: item.updatedAt ?? null,
                 notes: item.notes ?? null
             }));
 
@@ -3728,6 +3840,44 @@
                     <p class="${titleClass} text-rose-800">❌ Pedido Cancelado</p>
                     ${fieldsHtml}
                 </div>`;
+        }
+
+        function getWasteCreatedBy(record) {
+            const raw = record?.createdBy ?? record?.created_by ?? record?.registeredBy ?? record?.registered_by ?? '';
+            return String(raw).trim();
+        }
+
+        function getWasteCreatedAt(record) {
+            return record?.createdAt ?? record?.created_at ?? null;
+        }
+
+        function getWasteUpdatedBy(record) {
+            return String(record?.updatedBy ?? record?.updated_by ?? '').trim();
+        }
+
+        function getWasteUpdatedAt(record) {
+            return record?.updatedAt ?? record?.updated_at ?? null;
+        }
+
+        function normalizeWasteActor(value) {
+            return String(formatRequesterName(value) || value || '').trim().toLowerCase();
+        }
+
+        function isWasteRecordOwner(record) {
+            const actor = normalizeWasteActor(getWasteCreatedBy(record));
+            const current = normalizeWasteActor(getCurrentUserName());
+            const username = normalizeWasteActor(currentUser?.username);
+            return Boolean(actor && (actor === current || actor === username));
+        }
+
+        function canEditWasteRecord(record = null) {
+            if (currentProfile === 'administrador' || currentProfile === 'manager') return true;
+            if (!record) return true;
+            return isWasteRecordOwner(record);
+        }
+
+        function canDeleteWasteRecord() {
+            return currentProfile === 'administrador';
         }
 
         function formatWasteDate(dateStr) {
@@ -6653,27 +6803,38 @@
                 return;
             }
 
-            listEl.innerHTML = records.map(record => `
+            listEl.innerHTML = records.map(record => {
+                const createdBy = getWasteCreatedBy(record);
+                const createdAt = formatOrderDateTime(getWasteCreatedAt(record));
+                const canEdit = canEditWasteRecord(record);
+                const canDelete = canDeleteWasteRecord();
+                return `
                 <li class="rounded-lg border border-slate-100 bg-slate-50 p-2.5">
                     <div class="flex justify-between items-start gap-2">
                         <div class="min-w-0 flex-1">
                             <p class="font-semibold text-slate-800 text-sm truncate">${escapeHtml(record.product)}</p>
-                            <p class="text-[11px] text-slate-500 mt-0.5">${formatWasteDate(record.date)} · ${escapeHtml(record.registeredBy || '—')}</p>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Data do descarte: ${formatWasteDate(record.date)}</p>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Registado por: ${escapeHtml(formatRequesterName(createdBy) || createdBy || '—')}</p>
+                            <p class="text-[11px] text-slate-500">Data de registo: ${escapeHtml(createdAt || '—')}</p>
                             ${record.notes ? `<p class="text-[11px] text-slate-500 mt-1 line-clamp-2">${escapeHtml(record.notes)}</p>` : ''}
                         </div>
                         <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
                             <span class="font-semibold text-violet-700 text-sm whitespace-nowrap">${escapeHtml(record.quantity)}</span>
+                            ${canEdit || canDelete ? `
                             <div class="flex gap-1">
+                                ${canEdit ? `
                                 <button onclick="openWasteModal('${unit}', '${record.id}')" class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-500 hover:text-slate-700 hover:border-slate-300 transition" title="Editar">
                                     <i class="fa-solid fa-pen text-[10px]"></i>
-                                </button>
+                                </button>` : ''}
+                                ${canDelete ? `
                                 <button onclick="deleteWasteRecord('${record.id}')" class="inline-flex items-center justify-center rounded-md border border-rose-200 bg-white px-2 py-1 text-rose-500 hover:text-rose-700 hover:border-rose-300 transition" title="Eliminar">
                                     <i class="fa-solid fa-trash text-[10px]"></i>
-                                </button>
-                            </div>
+                                </button>` : ''}
+                            </div>` : ''}
                         </div>
                     </div>
-                </li>`).join('');
+                </li>`;
+            }).join('');
         }
 
         function clearWasteForm() {
@@ -6682,8 +6843,33 @@
             document.getElementById('waste_product').value = '';
             document.getElementById('waste_quantity').value = '';
             document.getElementById('waste_date').value = getTodayDateString();
-            document.getElementById('waste_registered_by').value = '';
             document.getElementById('waste_notes').value = '';
+            const auditPanel = document.getElementById('wasteEditAuditPanel');
+            if (auditPanel) auditPanel.classList.add('hidden');
+            const updatedByEl = document.getElementById('wasteAuditUpdatedBy');
+            const updatedAtEl = document.getElementById('wasteAuditUpdatedAt');
+            if (updatedByEl) updatedByEl.textContent = '—';
+            if (updatedAtEl) updatedAtEl.textContent = '—';
+        }
+
+        function fillWasteEditAuditPanel(record) {
+            const auditPanel = document.getElementById('wasteEditAuditPanel');
+            const updatedByEl = document.getElementById('wasteAuditUpdatedBy');
+            const updatedAtEl = document.getElementById('wasteAuditUpdatedAt');
+            const updatedBy = getWasteUpdatedBy(record);
+            const updatedAt = formatOrderDateTime(getWasteUpdatedAt(record));
+
+            if (!auditPanel || !updatedByEl || !updatedAtEl) return;
+
+            if (updatedBy || updatedAt) {
+                auditPanel.classList.remove('hidden');
+                updatedByEl.textContent = formatRequesterName(updatedBy) || updatedBy || '—';
+                updatedAtEl.textContent = updatedAt || '—';
+            } else {
+                auditPanel.classList.add('hidden');
+                updatedByEl.textContent = '—';
+                updatedAtEl.textContent = '—';
+            }
         }
 
         function openWasteModal(unit, recordId = '') {
@@ -6694,6 +6880,9 @@
             if (recordId) {
                 const record = wasteRecords.find(item => item.id === recordId);
                 if (!record) return;
+                if (!canEditWasteRecord(record)) {
+                    return alert('Não tem permissão para editar este descarte.');
+                }
 
                 document.getElementById('wasteModalTitle').innerText = 'Editar Descarte';
                 document.getElementById('waste_id').value = record.id;
@@ -6702,8 +6891,8 @@
                 document.getElementById('waste_product').value = record.product;
                 document.getElementById('waste_quantity').value = record.quantity;
                 document.getElementById('waste_date').value = record.date;
-                document.getElementById('waste_registered_by').value = record.registeredBy === '—' ? '' : record.registeredBy;
                 document.getElementById('waste_notes').value = record.notes || '';
+                fillWasteEditAuditPanel(record);
             } else {
                 document.getElementById('wasteModalTitle').innerText = `Registar Descarte · ${unit}`;
             }
@@ -6722,28 +6911,55 @@
             const product = document.getElementById('waste_product').value.trim();
             const quantity = document.getElementById('waste_quantity').value.trim();
             const date = document.getElementById('waste_date').value;
-            const registeredBy = document.getElementById('waste_registered_by').value.trim();
             const notes = document.getElementById('waste_notes').value.trim();
 
             if (!product) return alert('Indique o produto descartado.');
             if (!quantity) return alert('Indique a quantidade descartada.');
             if (!date) return alert('Indique a data do descarte.');
-            if (!registeredBy) return alert('Indique quem registou o descarte.');
 
-            const payload = {
-                id: recordId || `w-${Date.now()}`,
-                unit,
-                product,
-                quantity,
-                date,
-                registeredBy,
-                notes
-            };
+            const actor = getCurrentUserName();
+            if (!actor) return alert('É necessário autenticar-se para registar descartes.');
+
+            let payload;
 
             if (recordId) {
+                const existing = wasteRecords.find(item => item.id === recordId);
+                if (!existing) return alert('Registo não encontrado.');
+                if (!canEditWasteRecord(existing)) {
+                    return alert('Não tem permissão para editar este descarte.');
+                }
+
+                payload = {
+                    ...existing,
+                    unit,
+                    product,
+                    quantity,
+                    date,
+                    notes,
+                    registeredBy: getWasteCreatedBy(existing) || actor,
+                    createdBy: getWasteCreatedBy(existing) || actor,
+                    createdAt: getWasteCreatedAt(existing) || getNowDateTimeString(),
+                    updatedBy: actor,
+                    updatedAt: getNowDateTimeString()
+                };
+
                 const index = wasteRecords.findIndex(item => item.id === recordId);
                 if (index !== -1) wasteRecords[index] = payload;
             } else {
+                const now = getNowDateTimeString();
+                payload = {
+                    id: `w-${Date.now()}`,
+                    unit,
+                    product,
+                    quantity,
+                    date,
+                    notes,
+                    registeredBy: actor,
+                    createdBy: actor,
+                    createdAt: now,
+                    updatedBy: null,
+                    updatedAt: null
+                };
                 wasteRecords.push(payload);
             }
 
@@ -6753,6 +6969,10 @@
         }
 
         async function deleteWasteRecord(recordId) {
+            if (!canDeleteWasteRecord()) {
+                return alert('Apenas administradores podem eliminar descartes.');
+            }
+
             const record = wasteRecords.find(item => item.id === recordId);
             if (!record) return;
             if (!confirm(`Eliminar o registo de descarte de «${record.product}»?`)) return;
@@ -8056,6 +8276,7 @@
             renderAlerts();
             updateHeaderActionButtons('tab-inventario');
             setActiveSidebarButton('tab-inventario');
+            renderAppVersionFooter();
             startSupabaseRealtime();
         }
 
@@ -8139,15 +8360,136 @@
         }
 
     </script>
+<script src="app-info.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <script src="inventory.js"></script>
+
+<div id="pwaUpdateToast" class="hidden fixed bottom-16 right-4 z-[80] w-[min(100vw-2rem,22rem)] rounded-2xl border border-violet-200 bg-white shadow-2xl p-4">
+    <div class="flex items-start gap-3">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 border border-violet-100">
+            <i class="fa-solid fa-arrows-rotate text-violet-600 text-sm"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-slate-900">Nova versão disponível</p>
+            <p id="pwaUpdateVersion" class="hidden mt-1 text-xs font-semibold text-violet-700"></p>
+            <p class="mt-1 text-xs text-slate-500">Foi publicada uma nova versão da QCShop.</p>
+            <div class="mt-3 flex gap-2">
+                <button type="button" onclick="applyPwaUpdateNow()" class="flex-1 rounded-lg bg-[#8B7EC8] px-3 py-2 text-xs font-semibold text-white hover:bg-[#7A6BB0] transition">Atualizar agora</button>
+                <button type="button" onclick="dismissPwaUpdateToast()" class="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">Mais tarde</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function () {
-            navigator.serviceWorker.register('./service-worker.js').catch(function (err) {
-                console.warn('Service Worker não registado:', err);
+    let waitingServiceWorker = null;
+    let pwaUpdateRequested = false;
+    let pendingAppVersion = null;
+
+    function updatePwaToastVersionLabel(version) {
+        const el = document.getElementById('pwaUpdateVersion');
+        if (!el) return;
+        if (version) {
+            el.textContent = `Versão ${version} disponível`;
+            el.classList.remove('hidden');
+        } else {
+            el.textContent = '';
+            el.classList.add('hidden');
+        }
+    }
+
+    function showPwaUpdateToast() {
+        document.getElementById('pwaUpdateToast')?.classList.remove('hidden');
+    }
+
+    function dismissPwaUpdateToast() {
+        document.getElementById('pwaUpdateToast')?.classList.add('hidden');
+    }
+
+    function applyPwaUpdateNow() {
+        if (!waitingServiceWorker) return;
+        pwaUpdateRequested = true;
+        dismissPwaUpdateToast();
+        waitingServiceWorker.postMessage({ type: 'SKIP_WAITING' });
+    }
+
+    async function fetchRemoteAppVersion() {
+        try {
+            const response = await fetch(`./app-info.js?ts=${Date.now()}`, { cache: 'no-store' });
+            if (!response.ok) return null;
+            const text = await response.text();
+            const match = text.match(/version:\s*['"]([^'"]+)['"]/);
+            return match ? match[1] : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async function notifyPwaUpdateAvailable(worker) {
+        waitingServiceWorker = worker;
+        pendingAppVersion = null;
+        updatePwaToastVersionLabel(null);
+
+        if (worker) {
+            worker.postMessage({ type: 'GET_APP_INFO' });
+        }
+
+        const remoteVersion = await fetchRemoteAppVersion();
+        const currentVersion = (window.QCSHOP_APP_INFO || {}).version;
+        if (remoteVersion && remoteVersion !== currentVersion) {
+            pendingAppVersion = remoteVersion;
+            updatePwaToastVersionLabel(remoteVersion);
+        }
+
+        showPwaUpdateToast();
+    }
+
+    function trackWaitingServiceWorker(registration) {
+        if (registration.waiting && navigator.serviceWorker.controller) {
+            notifyPwaUpdateAvailable(registration.waiting);
+        }
+
+        registration.addEventListener('updatefound', function () {
+            const newWorker = registration.installing;
+            if (!newWorker) return;
+
+            newWorker.addEventListener('statechange', function () {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    notifyPwaUpdateAvailable(newWorker);
+                }
             });
+        });
+    }
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', function (event) {
+            if (event.data?.type !== 'APP_INFO' || !event.data.version) return;
+            const currentVersion = (window.QCSHOP_APP_INFO || {}).version;
+            if (event.data.version !== currentVersion) {
+                pendingAppVersion = event.data.version;
+                updatePwaToastVersionLabel(event.data.version);
+            }
+        });
+
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+            if (!pwaUpdateRequested) return;
+            window.location.reload();
+        });
+
+        window.addEventListener('load', function () {
+            if (typeof renderAppVersionFooter === 'function') {
+                renderAppVersionFooter();
+            }
+
+            navigator.serviceWorker.register('./service-worker.js')
+                .then(function (registration) {
+                    trackWaitingServiceWorker(registration);
+                    registration.update();
+                })
+                .catch(function (err) {
+                    console.warn('Service Worker não registado:', err);
+                });
         });
     }
 </script>
