@@ -2169,6 +2169,7 @@
         }
 
         function logout() {
+            stopSupabaseRealtime();
             clearSession();
             currentProfile = 'analista';
             showLoginScreen('login');
@@ -7830,6 +7831,188 @@
             return Boolean(globalSearch || productFilter || referenceFilter || brandFilter);
         }
 
+        // ===============================
+        // SUPABASE REALTIME
+        // ===============================
+
+        /**
+         * Physical Supabase tables watched via Realtime.
+         * `labels` maps logical/domain names (e.g. quotations → shopping_list).
+         */
+        const REALTIME_PHYSICAL_TABLES = [
+            { table: 'shopping_list', group: 'shopping', labels: ['shopping_list', 'quotations'] },
+            { table: 'alerts', group: 'alerts', labels: ['alerts'] },
+            { table: 'budgets', group: 'budgets', labels: ['budgets', 'cost_centers'] },
+            { table: 'inventory', group: 'products', labels: ['products'] },
+            { table: 'users', group: 'users', labels: ['users'] },
+            { table: 'product_approvals', group: 'products', labels: [] },
+            { table: 'waste_records', group: 'usage', labels: [] },
+            { table: 'alert_user_status', group: 'alerts', labels: [] }
+        ];
+
+        const realtimeChannels = new Map();
+        const realtimeRefreshTimers = new Map();
+        let realtimeActive = false;
+
+        function isPanelOpen(panelId) {
+            const el = document.getElementById(panelId);
+            return Boolean(el && !el.classList.contains('translate-x-full'));
+        }
+
+        function getActiveTabId() {
+            return document.querySelector('.tab-content.active')?.id || '';
+        }
+
+        function scheduleRealtimeGroupRefresh(group) {
+            if (realtimeRefreshTimers.has(group)) {
+                clearTimeout(realtimeRefreshTimers.get(group));
+            }
+            realtimeRefreshTimers.set(group, setTimeout(() => {
+                realtimeRefreshTimers.delete(group);
+                runRealtimeGroupRefresh(group);
+            }, 350));
+        }
+
+        async function refreshRealtimeShopping() {
+            shoppingList = await loadShoppingList();
+            const activeTab = getActiveTabId();
+            if (activeTab.startsWith('tab-compras')) {
+                renderShopping();
+            }
+            if (isPanelOpen('historyPanel')) {
+                const productName = document.getElementById('historyProductName')?.innerText?.trim();
+                if (productName) verHistoricoProduto(productName);
+            }
+        }
+
+        async function refreshRealtimeAlerts() {
+            alerts = await loadAlerts();
+            await loadAlertUserStatus();
+            renderAlerts();
+        }
+
+        async function refreshRealtimeBudgets() {
+            budgetData = await loadBudgetData();
+            if (isPanelOpen('budgetPanel')) {
+                renderBudgets();
+            }
+            const activeTab = getActiveTabId();
+            if (activeTab.startsWith('tab-compras')) {
+                renderShopping();
+            }
+        }
+
+        async function refreshRealtimeProducts() {
+            inventory = await loadInventoryFromSupabase();
+            productApprovals = await loadProductApprovals();
+            if (getActiveTabId() === 'tab-inventario') {
+                renderInventory();
+            }
+            renderAlerts();
+        }
+
+        async function refreshRealtimeUsers() {
+            if (canManageUsers() && getActiveTabId() === 'tab-utilizadores') {
+                await renderUserManagement();
+            }
+            if (currentUser?.username) {
+                const updated = await findUser(currentUser.username);
+                if (updated) {
+                    applyUserToProfile(updated);
+                    updateSidebarUserInfo();
+                    updateAddProductModalForProfile();
+                    updateAlertPanelForProfile();
+                }
+            }
+        }
+
+        async function refreshRealtimeUsage() {
+            wasteRecords = await loadWasteRecords();
+            if (getActiveTabId() === 'tab-frequencia') {
+                renderUsageStats();
+            }
+        }
+
+        async function runRealtimeGroupRefresh(group) {
+            switch (group) {
+                case 'shopping':
+                    await refreshRealtimeShopping();
+                    break;
+                case 'alerts':
+                    await refreshRealtimeAlerts();
+                    break;
+                case 'budgets':
+                    await refreshRealtimeBudgets();
+                    break;
+                case 'products':
+                    await refreshRealtimeProducts();
+                    break;
+                case 'users':
+                    await refreshRealtimeUsers();
+                    break;
+                case 'usage':
+                    await refreshRealtimeUsage();
+                    break;
+                default:
+                    console.warn(`[Realtime] Grupo desconhecido: ${group}`);
+            }
+        }
+
+        function stopSupabaseRealtime() {
+            realtimeRefreshTimers.forEach(timer => clearTimeout(timer));
+            realtimeRefreshTimers.clear();
+
+            realtimeChannels.forEach(channel => {
+                supabaseClient.removeChannel(channel);
+            });
+            realtimeChannels.clear();
+            realtimeActive = false;
+        }
+
+        function startSupabaseRealtime() {
+            if (realtimeActive) return;
+
+            const subscribedPhysical = new Set();
+
+            REALTIME_PHYSICAL_TABLES.forEach(({ table, group }) => {
+                if (subscribedPhysical.has(table)) return;
+                subscribedPhysical.add(table);
+
+                const channel = supabaseClient
+                    .channel(`qcshop:${table}`)
+                    .on(
+                        'postgres_changes',
+                        { event: '*', schema: 'public', table },
+                        () => scheduleRealtimeGroupRefresh(group)
+                    )
+                    .subscribe((status, err) => {
+                        if (status === 'SUBSCRIBED') {
+                            console.log(`[Realtime] Subscrito: ${table}`);
+                        } else if (status === 'CHANNEL_ERROR') {
+                            console.warn(`[Realtime] Erro no canal ${table}:`, err);
+                        }
+                    });
+
+                realtimeChannels.set(table, channel);
+            });
+
+            realtimeActive = true;
+        }
+
+        function getRealtimeSubscribedTables() {
+            return REALTIME_PHYSICAL_TABLES.reduce((acc, entry) => {
+                if (!acc.some(item => item.table === entry.table)) {
+                    acc.push({ table: entry.table, labels: [...entry.labels] });
+                } else {
+                    const existing = acc.find(item => item.table === entry.table);
+                    entry.labels.forEach(label => {
+                        if (label && !existing.labels.includes(label)) existing.labels.push(label);
+                    });
+                }
+                return acc;
+            }, []);
+        }
+
         async function initializeAppContent() {
             applyAdminOnlyVisibility();
             renderOrderLabOptions();
@@ -7848,6 +8031,7 @@
             renderAlerts();
             updateHeaderActionButtons('tab-inventario');
             setActiveSidebarButton('tab-inventario');
+            startSupabaseRealtime();
         }
 
         window.onload = async function() {
