@@ -5,8 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QCShop</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%20fill%3D%22none%22%3E%20%3Cpath%20d%3D%22M18%2022h28l-3%2028H21L18%2022z%22%20fill%3D%22%23EDE4FF%22%2F%3E%20%3Cpath%20d%3D%22M24%2022c0-6%204-10%208-10s8%204%208%2010%22%20stroke%3D%22%238B5CF6%22%20stroke-width%3D%223.2%22%20stroke-linecap%3D%22round%22%2F%3E%20%3Ccircle%20cx%3D%2224%22%20cy%3D%2252%22%20r%3D%222.8%22%20fill%3D%22%238B5CF6%22%2F%3E%20%3Ccircle%20cx%3D%2240%22%20cy%3D%2252%22%20r%3D%222.8%22%20fill%3D%22%238B5CF6%22%2F%3E%20%3Ctext%20x%3D%2232%22%20y%3D%2242%22%20text-anchor%3D%22middle%22%20font-family%3D%22Segoe%20UI%2CArial%2Csans-serif%22%20font-size%3D%2215%22%20font-weight%3D%22700%22%20fill%3D%22%237C3AED%22%3EQC%3C%2Ftext%3E%3C%2Fsvg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%20fill%3D%22none%22%3E%20%3Cpath%20d%3D%22M18%2022h28l-3%2028H21L18%2022z%22%20fill%3D%22%23EDE4FF%22%2F%3E%20%3Cpath%20d%3D%22M24%2022c0-6%204-10%208-10s8%204%208%2010%22%20stroke%3D%22%238B5CF6%22%20stroke-width%3D%223.2%22%20stroke-linecap%3D%22round%22%2F%3E%20%3Ccircle%20cx%3D%2224%22%20cy%3D%2252%22%20r%3D%222.8%22%20fill%3D%22%238B5CF6%22%2F%3E%20%3Ccircle%20cx%3D%2240%22%20cy%3D%2252%22%20r%3D%222.8%22%20fill%3D%22%238B5CF6%22%2F%3E%20%3Ctext%20x%3D%2232%22%20y%3D%2242%22%20text-anchor%3D%22middle%22%20font-family%3D%22Segoe%20UI%2CArial%2Csans-serif%22%20font-size%3D%2215%22%20font-weight%3D%22700%22%20fill%3D%22%237C3AED%22%3EQC%3C%2Ftext%3E%3C%2Fsvg%3E">
-    <meta name="theme-color" content="#FCFAFF">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#8B5CF6">
+    <meta name="application-name" content="QCShop">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="QCShop">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="mobile-web-app-capable" content="yes">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -8136,6 +8142,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <script src="inventory.js"></script>
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('./service-worker.js').catch(function (err) {
+                console.warn('Service Worker não registado:', err);
+            });
+        });
+    }
+</script>
 </body>
 </html>
 </user_query>
