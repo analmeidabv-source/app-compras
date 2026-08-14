@@ -29,7 +29,7 @@
           background: linear-gradient(160deg, #E9DDF8 0%, #F7F5FC 50%, #EEE8FA 100%);
         }
         .brand-logo, .brand-logo-login, .brand-icon {
-          background: transparent !important;s
+          background: transparent !important;
           mix-blend-mode: normal;
           display: block;
         }
@@ -1389,13 +1389,7 @@
                 <input type="hidden" id="purchaseCostIndex" value="">
 
                 <div id="purchaseDetailPanelDados" class="purchase-detail-panel space-y-5">
-                    <div id="purchaseCancelReasonBanner" class="hidden rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-rose-800">
-                        <p class="text-sm font-bold">❌ Pedido Cancelado</p>
-                        <div id="purchaseCancelReasonBody" class="hidden mt-1.5">
-                            <p class="text-xs font-semibold text-rose-700">Motivo:</p>
-                            <p id="purchaseCancelReasonText" class="mt-0.5 text-sm italic text-rose-700"></p>
-                        </div>
-                    </div>
+                    <div id="purchaseCancelReasonBanner" class="hidden rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-rose-800"></div>
 
                     <div id="purchaseQuoteSummary" class="hidden rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-800">
                         <p class="text-xs font-bold">🏆 Cotação selecionada</p>
@@ -3008,6 +3002,8 @@
                 selectedSupplier: item.selected_supplier ?? null,
                 selectedPrice: item.selected_price ?? null,
                 cancelReason: item.cancel_reason ?? null,
+                cancelledBy: item.cancelledBy ?? item.cancelled_by ?? null,
+                cancelledAt: item.cancelledAt ?? item.cancelled_at ?? null,
                 purchasedBy: item.purchasedBy ?? item.purchased_by ?? null,
                 purchasedAt: item.purchasedAt ?? item.purchased_at ?? null,
                 receivedBy: item.receivedBy ?? item.received_by ?? null,
@@ -3668,22 +3664,62 @@
             return String(raw).trim();
         }
 
-        /** Inline cancel justification near status / in details (HTML already escaped). */
-        function formatCancelReasonBlock(item, { compact = false } = {}) {
-            if (!item || item.status !== 'Pedido Cancelado') return '';
+        function getOrderCancelledBy(item) {
+            const raw = item?.cancelledBy ?? item?.cancelled_by ?? '';
+            return String(raw).trim();
+        }
+
+        function getOrderCancelledAt(item) {
+            const raw = item?.cancelledAt ?? item?.cancelled_at ?? '';
+            return String(raw || '').trim();
+        }
+
+        function buildCancelAuditFieldsHtml(item, { compact = false } = {}) {
             const reason = getOrderCancelReason(item);
-            const pad = compact ? 'px-2.5 py-1.5' : 'px-3 py-2';
-            const titleClass = compact ? 'text-[11px]' : 'text-sm';
-            const motivoClass = compact ? 'text-[10px]' : 'text-xs';
-            const reasonClass = compact ? 'text-[11px]' : 'text-sm';
-            const motivoHtml = reason
-                ? `<p class="mt-0.5 ${motivoClass} font-semibold text-rose-700">Motivo:</p>
-                   <p class="${reasonClass} italic text-rose-600">"${escapeHtml(reason)}"</p>`
-                : '';
+            const cancelledBy = getOrderCancelledBy(item);
+            const cancelledAt = getOrderCancelledAt(item);
+            const labelClass = compact ? 'text-[10px]' : 'text-xs';
+            const valueClass = compact ? 'text-[11px]' : 'text-sm';
+            const parts = [];
+
+            if (reason) {
+                parts.push(
+                    `<p class="mt-1.5 ${labelClass} font-semibold text-rose-700">Motivo</p>`,
+                    `<p class="${valueClass} italic text-rose-600">"${escapeHtml(reason)}"</p>`
+                );
+            }
+            if (cancelledBy) {
+                parts.push(
+                    `<p class="mt-1.5 ${labelClass} font-semibold text-rose-700">Cancelado por</p>`,
+                    `<p class="${valueClass} text-rose-800">${escapeHtml(formatRequesterName(cancelledBy) || cancelledBy)}</p>`
+                );
+            }
+            if (cancelledAt) {
+                const when = formatOrderDateTime(cancelledAt);
+                if (when) {
+                    parts.push(
+                        `<p class="mt-1.5 ${labelClass} font-semibold text-rose-700">Cancelado em</p>`,
+                        `<p class="${valueClass} text-rose-800">${escapeHtml(when)}</p>`
+                    );
+                }
+            }
+
+            return parts.join('');
+        }
+
+        /** Inline cancel audit near status / in details (HTML already escaped). */
+        function formatCancelReasonBlock(item, { compact = false, modal = false } = {}) {
+            if (!item || item.status !== 'Pedido Cancelado') return '';
+            const fieldsHtml = buildCancelAuditFieldsHtml(item, { compact });
+            const pad = compact ? 'px-2.5 py-1.5' : (modal ? 'px-4 py-3' : 'px-3 py-2');
+            const rounded = modal ? 'rounded-2xl' : 'rounded-lg';
+            const border = modal ? 'border-rose-300' : 'border-rose-200';
+            const titleClass = compact ? 'text-[11px]' : (modal ? 'text-sm font-bold' : 'text-sm font-semibold');
+            const margin = modal ? '' : 'mt-1.5';
             return `
-                <div class="mt-1.5 rounded-lg border border-rose-200 bg-rose-50 ${pad} text-left">
-                    <p class="${titleClass} font-semibold text-rose-800">❌ Pedido Cancelado</p>
-                    ${motivoHtml}
+                <div class="${margin} ${rounded} border ${border} bg-rose-50 ${pad} text-left text-rose-800">
+                    <p class="${titleClass} text-rose-800">❌ Pedido Cancelado</p>
+                    ${fieldsHtml}
                 </div>`;
         }
 
@@ -4742,25 +4778,15 @@
             const winnerPrice = parseQuotePrice(item?.selectedPrice ?? item?.selected_price);
 
             const cancelBanner = document.getElementById('purchaseCancelReasonBanner');
-            const cancelBody = document.getElementById('purchaseCancelReasonBody');
-            const cancelText = document.getElementById('purchaseCancelReasonText');
             if (cancelBanner) {
                 if (item.status === 'Pedido Cancelado') {
                     cancelBanner.classList.remove('hidden');
-                    const reason = getOrderCancelReason(item);
-                    if (cancelBody && cancelText) {
-                        if (reason) {
-                            cancelText.textContent = `"${reason}"`;
-                            cancelBody.classList.remove('hidden');
-                        } else {
-                            cancelText.textContent = '';
-                            cancelBody.classList.add('hidden');
-                        }
-                    }
+                    cancelBanner.innerHTML = `
+                        <p class="text-sm font-bold">❌ Pedido Cancelado</p>
+                        ${buildCancelAuditFieldsHtml(item)}`;
                 } else {
                     cancelBanner.classList.add('hidden');
-                    if (cancelBody) cancelBody.classList.add('hidden');
-                    if (cancelText) cancelText.textContent = '';
+                    cancelBanner.innerHTML = '';
                 }
             }
 
@@ -5367,16 +5393,13 @@
             if (item?.status) {
                 const statusSort = purchaseDateKey || quoteDateKey || createdKey || '9999-99-99';
                 const isCancelled = item.status === 'Pedido Cancelado';
-                const cancelReason = getOrderCancelReason(item);
+                const cancelAuditHtml = isCancelled ? buildCancelAuditFieldsHtml(item) : '';
                 events.push({
                     sortKey: statusSort,
                     order: 5,
                     title: 'Estado atual',
                     detail: isCancelled ? '❌ Pedido Cancelado' : String(item.status),
-                    detailHtml: isCancelled && cancelReason
-                        ? `<p class="mt-1 text-xs font-semibold text-rose-700">Motivo:</p>
-                           <p class="text-sm italic text-rose-600">"${escapeHtml(cancelReason)}"</p>`
-                        : '',
+                    detailHtml: cancelAuditHtml,
                     accent: isCancelled ? 'rose' : 'slate'
                 });
             }
@@ -5859,9 +5882,14 @@
             if (index === "") return;
             if (!justification) return alert("Indique a justificação para o cancelamento.");
 
+            const cancelledBy = getCurrentUserName();
+            const cancelledAt = getNowDateTimeString();
+
             shoppingList[index].status = 'Pedido Cancelado';
             shoppingList[index].cancelReason = justification;
             shoppingList[index].cancel_reason = justification;
+            shoppingList[index].cancelledBy = cancelledBy;
+            shoppingList[index].cancelledAt = cancelledAt;
 
             const item = shoppingList[index];
             if (!item?.id) return alert("Pedido inválido.");
@@ -5870,7 +5898,9 @@
                 .from("shopping_list")
                 .update({
                     status: 'Pedido Cancelado',
-                    cancel_reason: justification
+                    cancel_reason: justification,
+                    cancelled_by: cancelledBy,
+                    cancelled_at: cancelledAt
                 })
                 .eq("id", item.id);
 
