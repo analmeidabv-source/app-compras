@@ -1,10 +1,13 @@
-const CACHE_NAME = 'qcshop-pwa-v1';
+importScripts('./app-info.js');
+
+const CACHE_NAME = QCSHOP_APP_INFO.swCacheName;
 
 const PRECACHE_URLS = [
   './',
   './index.html',
   './procurement-hub-v5.html',
   './manifest.json',
+  './app-info.js',
   './supabase.js',
   './inventory.js',
   './icon-192.png',
@@ -17,8 +20,22 @@ self.addEventListener('install', (event) => {
     await Promise.all(
       PRECACHE_URLS.map((url) => cache.add(url).catch(() => undefined))
     );
-    await self.skipWaiting();
   })());
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+
+  if (event.data?.type === 'GET_APP_INFO' && event.source) {
+    event.source.postMessage({
+      type: 'APP_INFO',
+      version: QCSHOP_APP_INFO.version,
+      appName: QCSHOP_APP_INFO.appName
+    });
+  }
 });
 
 self.addEventListener('activate', (event) => {
