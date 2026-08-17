@@ -7323,22 +7323,45 @@
         function renderSystemAlertActions(key, alertType, isDone = false) {
             if (!canDismissSystemAlertType(alertType)) return '';
 
-            const encodedKey = encodeURIComponent(key);
-            const onclickArg = JSON.stringify(encodedKey);
             if (isDone) {
                 return `
                     <div class="mt-3 flex gap-2 pl-11">
-                        <button type="button" data-alert-action="remove-system" data-alert-key="${escapeHtml(key)}" onclick="removeSystemAlert(${onclickArg})" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
+                        <button type="button" data-alert-action="remove-system" data-alert-key="${escapeHtml(key)}" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
                     </div>
                 `;
             }
 
             return `
                 <div class="mt-3 flex flex-wrap gap-2 pl-11">
-                    <button type="button" data-alert-action="done-system" data-alert-key="${escapeHtml(key)}" onclick="markSystemAlertDone(${onclickArg})" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">Marcar como feito</button>
-                    <button type="button" data-alert-action="remove-system" data-alert-key="${escapeHtml(key)}" onclick="removeSystemAlert(${onclickArg})" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
+                    <button type="button" data-alert-action="done-system" data-alert-key="${escapeHtml(key)}" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">Marcar como feito</button>
+                    <button type="button" data-alert-action="remove-system" data-alert-key="${escapeHtml(key)}" class="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">Remover</button>
                 </div>
             `;
+        }
+
+        function bindSystemAlertActionButtons() {
+            if (document.documentElement.dataset.systemAlertActionsBound === '1') return;
+            document.documentElement.dataset.systemAlertActionsBound = '1';
+
+            document.addEventListener('click', function (event) {
+                const btn = event.target.closest('[data-alert-action]');
+                if (!btn) return;
+
+                const action = btn.getAttribute('data-alert-action');
+                const alertKey = btn.getAttribute('data-alert-key');
+                if (!alertKey) return;
+
+                const encodedKey = encodeURIComponent(alertKey);
+
+                if (action === 'remove-system') {
+                    removeSystemAlert(encodedKey);
+                    return;
+                }
+
+                if (action === 'done-system') {
+                    markSystemAlertDone(encodedKey);
+                }
+            });
         }
 
         async function markSystemAlertDone(encodedKey) {
@@ -8489,22 +8512,7 @@
         }
 
         window.onload = async function() {
-            document.addEventListener('click', function (event) {
-                const btn = event.target.closest('[data-alert-action="remove-system"]');
-                if (!btn) return;
-
-                console.log('[DIAG remove-system] clique capturado no document (capture)', {
-                    dataAlertKey: btn.getAttribute('data-alert-key'),
-                    onclickAttr: btn.getAttribute('onclick'),
-                    disabled: btn.disabled,
-                    pointerEvents: getComputedStyle(btn).pointerEvents,
-                    eventTarget: event.target.tagName,
-                    eventTargetClass: event.target.className,
-                    defaultPrevented: event.defaultPrevented,
-                    removeSystemAlertType: typeof removeSystemAlert,
-                    windowRemoveSystemAlertType: typeof window.removeSystemAlert
-                });
-            }, true);
+            bindSystemAlertActionButtons();
 
             document.getElementById('loginPassword')?.addEventListener('keydown', event => {
                 if (event.key === 'Enter') handleLoginSubmit();
