@@ -8594,6 +8594,7 @@
     let waitingServiceWorker = null;
     let pwaUpdateRequested = false;
     let pendingAppVersion = null;
+    let pwaServiceWorkerRegistration = null;
 
     function updatePwaToastVersionLabel(version) {
         const el = document.getElementById('pwaUpdateVersion');
@@ -8690,8 +8691,9 @@
                 renderAppVersionFooter();
             }
 
-            navigator.serviceWorker.register('./service-worker.js')
+            navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' })
                 .then(function (registration) {
+                    pwaServiceWorkerRegistration = registration;
                     trackWaitingServiceWorker(registration);
                     registration.update();
                 })
@@ -8699,6 +8701,20 @@
                     console.warn('Service Worker não registado:', err);
                 });
         });
+
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') {
+                pwaServiceWorkerRegistration?.update();
+            }
+        });
+
+        window.addEventListener('focus', function () {
+            pwaServiceWorkerRegistration?.update();
+        });
+
+        setInterval(function () {
+            pwaServiceWorkerRegistration?.update();
+        }, 60 * 60 * 1000);
     }
 </script>
 </body>
