@@ -2855,8 +2855,20 @@
             const request = productApprovals.find(item => item.id === approvalId);
             if (!request || (request.status !== 'approved' && request.status !== 'rejected')) return;
 
+            const previousApprovals = productApprovals;
             productApprovals = productApprovals.filter(item => item.id !== approvalId);
-            await saveProductApprovals();
+
+            const { error } = await supabaseClient
+                .from("product_approvals")
+                .delete()
+                .eq("id", approvalId);
+
+            if (error) {
+                console.error("Erro ao remover product_approvals:", error);
+                productApprovals = previousApprovals;
+                return;
+            }
+
             renderAlerts();
         }
 
