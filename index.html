@@ -3606,66 +3606,131 @@
         let systemAlertStatus = [];
 
         async function loadSystemAlertStatus() {
-            if (!currentUser?.username) {
+            const username = normalizeUsername(currentUser?.username);
+            console.log('[system_alert_status] loadSystemAlertStatus() início', {
+                username,
+                hasCurrentUser: Boolean(currentUser?.username)
+            });
+
+            if (!username) {
                 systemAlertStatus = [];
+                console.warn('[system_alert_status] loadSystemAlertStatus() abortado — sem utilizador autenticado');
                 return;
             }
 
-            const { data, error } = await supabaseClient
-                .from("system_alert_status")
-                .select("*")
-                .eq("username", currentUser.username);
+            try {
+                const { data, error, status, statusText } = await supabaseClient
+                    .from("system_alert_status")
+                    .select("*")
+                    .eq("username", username);
 
-            if (error) {
-                console.error("Erro ao carregar system_alert_status:", error);
+                console.log('[system_alert_status] loadSystemAlertStatus() resposta Supabase', {
+                    username,
+                    count: (data || []).length,
+                    data,
+                    error,
+                    status,
+                    statusText
+                });
+
+                if (error) {
+                    console.error('[system_alert_status] Erro ao carregar system_alert_status:', error);
+                    systemAlertStatus = [];
+                    return;
+                }
+
+                systemAlertStatus = (data || []).map(item => ({
+                    alertKey: item.alert_key,
+                    username: item.username,
+                    status: item.status,
+                    snapshot: item.snapshot ?? null
+                }));
+                console.log('[system_alert_status] loadSystemAlertStatus() concluído —', systemAlertStatus.length, 'registo(s) em memória');
+            } catch (loadError) {
+                console.error('[system_alert_status] Exceção em loadSystemAlertStatus():', loadError);
                 systemAlertStatus = [];
-                return;
             }
-
-            systemAlertStatus = (data || []).map(item => ({
-                alertKey: item.alert_key,
-                username: item.username,
-                status: item.status,
-                snapshot: item.snapshot ?? null
-            }));
         }
 
         async function setSystemAlertStatus(alertKey, status, snapshot = null) {
-            if (!currentUser?.username) {
-                console.warn("setSystemAlertStatus: sem utilizador autenticado.");
-                return;
+            const username = normalizeUsername(currentUser?.username);
+            console.log('[system_alert_status] setSystemAlertStatus() início', {
+                alertKey,
+                status,
+                username,
+                hasSnapshot: snapshot != null,
+                hasSupabaseClient: Boolean(supabaseClient),
+                hasCurrentUser: Boolean(currentUser?.username)
+            });
+
+            if (!username) {
+                console.error('[system_alert_status] setSystemAlertStatus() abortado — sem utilizador autenticado');
+                return false;
+            }
+
+            if (!supabaseClient) {
+                console.error('[system_alert_status] setSystemAlertStatus() abortado — supabaseClient indisponível');
+                return false;
             }
 
             const row = {
-                alert_key: alertKey,
-                username: currentUser.username,
+                alert_key: String(alertKey),
+                username,
                 status,
                 snapshot: snapshot ?? null,
                 updated_at: new Date().toISOString()
             };
 
-            const { error } = await supabaseClient
-                .from("system_alert_status")
-                .upsert(row, { onConflict: 'alert_key,username' });
+            console.log('[system_alert_status] setSystemAlertStatus() upsert payload', row);
 
-            if (error) {
-                console.error("Erro ao guardar system_alert_status:", error);
-                return;
-            }
+            try {
+                const { data, error, status: httpStatus, statusText } = await supabaseClient
+                    .from("system_alert_status")
+                    .upsert(row, { onConflict: 'alert_key,username' })
+                    .select();
 
-            const local = {
-                alertKey,
-                username: currentUser.username,
-                status,
-                snapshot: snapshot ?? null
-            };
-            const idx = systemAlertStatus.findIndex(
-                item => String(item.alertKey) === String(alertKey) && item.username === currentUser.username
-            );
-            if (idx >= 0) {
-                systemAlertStatus[idx] = local;
-            } else {
-                systemAlertStatus.push(local);
+                console.log('[system_alert_status] setSystemAlertStatus() upsert resposta Supabase', {
+                    data,
+                    error,
+                    httpStatus,
+                    statusText
+                });
+
+                if (error) {
+                    console.error('[system_alert_status] Erro ao guardar system_alert_status:', error);
+                    console.error('[system_alert_status] Detalhe do erro:', JSON.stringify(error, null, 2));
+                    return false;
+                }
+
+                if (!data?.length) {
+                    console.error(
+                        '[system_alert_status] Upsert concluiu sem erro mas não devolveu linhas — estado NÃO persistido.',
+                        { row, data, httpStatus, statusText }
+                    );
+                    return false;
+                }
+
+                const persisted = data[0];
+                console.log('[system_alert_status] setSystemAlertStatus() persistido com sucesso', persisted);
+
+                const local = {
+                    alertKey: persisted.alert_key,
+                    username: persisted.username,
+                    status: persisted.status,
+                    snapshot: persisted.snapshot ?? null
+                };
+                const idx = systemAlertStatus.findIndex(
+                    item => String(item.alertKey) === String(local.alertKey) && item.username === local.username
+                );
+                if (idx >= 0) {
+                    systemAlertStatus[idx] = local;
+                } else {
+                    systemAlertStatus.push(local);
+                }
+                return true;
+            } catch (upsertError) {
+                console.error('[system_alert_status] Exceção em setSystemAlertStatus():', upsertError);
+                return false;
             }
         }
 
@@ -7276,24 +7341,49 @@
         }
 
         async function markSystemAlertDone(encodedKey) {
+            console.log('[system_alert_status] markSystemAlertDone() clique', { encodedKey });
             const key = decodeURIComponent(encodedKey);
             const alertType = key.split(':')[0];
-            if (!canDismissSystemAlertType(alertType)) return;
+            console.log('[system_alert_status] markSystemAlertDone() key decodificada', { key, alertType });
+
+            if (!canDismissSystemAlertType(alertType)) {
+                console.warn('[system_alert_status] markSystemAlertDone() abortado — perfil sem permissão', { alertType });
+                return;
+            }
 
             const snapshot = resolveSystemAlertSnapshot(key);
-            if (!snapshot) return;
+            if (!snapshot) {
+                console.error('[system_alert_status] markSystemAlertDone() abortado — snapshot não encontrado', { key });
+                return;
+            }
 
-            await setSystemAlertStatus(key, 'done', snapshot);
+            const saved = await setSystemAlertStatus(key, 'done', snapshot);
+            if (!saved) {
+                console.error('[system_alert_status] markSystemAlertDone() falhou — upsert não persistiu', { key });
+                return;
+            }
+
             await loadSystemAlertStatus();
             renderAlerts();
         }
 
         async function removeSystemAlert(encodedKey) {
+            console.log('[system_alert_status] removeSystemAlert() clique', { encodedKey });
             const key = decodeURIComponent(encodedKey);
             const alertType = key.split(':')[0];
-            if (!canDismissSystemAlertType(alertType)) return;
+            console.log('[system_alert_status] removeSystemAlert() key decodificada', { key, alertType });
 
-            await setSystemAlertStatus(key, 'dismissed');
+            if (!canDismissSystemAlertType(alertType)) {
+                console.warn('[system_alert_status] removeSystemAlert() abortado — perfil sem permissão', { alertType });
+                return;
+            }
+
+            const saved = await setSystemAlertStatus(key, 'dismissed');
+            if (!saved) {
+                console.error('[system_alert_status] removeSystemAlert() falhou — upsert não persistiu', { key });
+                return;
+            }
+
             await loadSystemAlertStatus();
             renderAlerts();
         }
