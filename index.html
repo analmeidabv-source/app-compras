@@ -8489,6 +8489,23 @@
         }
 
         window.onload = async function() {
+            document.addEventListener('click', function (event) {
+                const btn = event.target.closest('[data-alert-action="remove-system"]');
+                if (!btn) return;
+
+                console.log('[DIAG remove-system] clique capturado no document (capture)', {
+                    dataAlertKey: btn.getAttribute('data-alert-key'),
+                    onclickAttr: btn.getAttribute('onclick'),
+                    disabled: btn.disabled,
+                    pointerEvents: getComputedStyle(btn).pointerEvents,
+                    eventTarget: event.target.tagName,
+                    eventTargetClass: event.target.className,
+                    defaultPrevented: event.defaultPrevented,
+                    removeSystemAlertType: typeof removeSystemAlert,
+                    windowRemoveSystemAlertType: typeof window.removeSystemAlert
+                });
+            }, true);
+
             document.getElementById('loginPassword')?.addEventListener('keydown', event => {
                 if (event.key === 'Enter') handleLoginSubmit();
             });
