@@ -227,7 +227,7 @@
             </nav>
 
             <div class="px-3 py-4 border-t border-violet-100 space-y-2">
-                <button onclick="togglePanel('budgetPanel')" class="sidebar-action-btn w-full rounded-lg border border-violet-200 px-3 py-2.5 flex items-center gap-3 text-sm">
+                <button id="sidebarBudgetBtn" onclick="togglePanel('budgetPanel')" class="sidebar-action-btn w-full rounded-lg border border-violet-200 px-3 py-2.5 flex items-center gap-3 text-sm">
                     <i class="fa-solid fa-wallet w-4 text-slate-500"></i>
                     Budget Centro Custos
                 </button>
@@ -1068,7 +1068,7 @@
                         <p class="text-[10px] font-bold uppercase text-emerald-700">Quantidade recebida</p>
                         <p id="receive_received_qty_display" class="mt-0.5 text-sm font-semibold text-emerald-800">—</p>
                     </div>
-                </div>
+                </div>s
                 <p id="receive_partial_hint" class="hidden text-xs font-semibold text-amber-700">
                     ⚠️ Receção Parcial — em falta: <span id="receive_missing_qty_display">—</span>
                 </p>
@@ -1901,6 +1901,9 @@
             const isAdmin = canManageUsers();
             const manageBtn = document.getElementById('sidebarManageUsersBtn');
             const usersTab = document.getElementById('tab-utilizadores');
+            const budgetBtn = document.getElementById('sidebarBudgetBtn');
+            const budgetPanel = document.getElementById('budgetPanel');
+            const canSeeBudget = canViewBudget();
 
             if (manageBtn) {
                 manageBtn.classList.toggle('hidden', !isAdmin);
@@ -1911,6 +1914,16 @@
             if (usersTab) {
                 usersTab.classList.toggle('hidden', !isAdmin);
                 usersTab.setAttribute('aria-hidden', isAdmin ? 'false' : 'true');
+            }
+
+            if (budgetBtn) {
+                budgetBtn.classList.toggle('hidden', !canSeeBudget);
+                budgetBtn.setAttribute('aria-hidden', canSeeBudget ? 'false' : 'true');
+                budgetBtn.tabIndex = canSeeBudget ? 0 : -1;
+            }
+
+            if (!canSeeBudget && budgetPanel) {
+                budgetPanel.classList.add('translate-x-full');
             }
 
             if (!isAdmin && document.getElementById('tab-utilizadores')?.classList.contains('active')) {
@@ -1992,12 +2005,13 @@
             'purchased_by', 'purchased_at',
             'received_by', 'received_at',
             'received_quantity', 'received_date', 'received_notes',
-            'lab_by', 'lab_at'
+            'lab_by', 'lab_at',
+            'quoted_at'
         ]);
 
         const SHOPPING_OPTIONAL_ATTR_KEYS = new Set([
             ...SHOPPING_SNAKE_ALIAS_KEYS,
-            'purchasedAt', 'labBy', 'labAt',
+            'purchasedAt', 'labBy', 'labAt', 'quotedAt',
             'receivedQuantity', 'receivedDate', 'receivedNotes'
         ]);
 
@@ -2048,6 +2062,22 @@
         }
 
         function canViewManagerAlerts() {
+            return canApproveProducts();
+        }
+
+        function canViewBudget() {
+            return canApproveProducts();
+        }
+
+        function canEditInventoryItems() {
+            return canAddProductsDirectly();
+        }
+
+        function canEditPurchaseOrders() {
+            return canApproveProducts();
+        }
+
+        function canManageQuotesAndPurchases() {
             return canApproveProducts();
         }
 
@@ -3006,6 +3036,7 @@
         }
 
         function openInventoryModal(index) {
+            if (!canEditInventoryItems()) return;
             const item = inventory[index];
             if (!item) return;
 
@@ -3025,6 +3056,7 @@
         }
 
         async function saveInventoryItem() {
+            if (!canEditInventoryItems()) return;
             const index = document.getElementById('inventory_edit_index').value;
             if (index === '') return;
 
@@ -3045,6 +3077,7 @@
         }
 
         async function deleteInventoryItem(index) {
+            if (!canEditInventoryItems()) return;
             const item = inventory[index];
             if (!item) return;
             if (!confirm(`Remover «${item.name}» do inventário?`)) return;
@@ -3136,6 +3169,7 @@
                 receivedNotes: item.receivedNotes ?? item.received_notes ?? null,
                 labBy: item.labBy ?? item.lab_by ?? null,
                 labAt: item.labAt ?? item.lab_at ?? null,
+                quotedAt: item.quotedAt ?? item.quoted_at ?? null,
                 purchaseDate: item.purchaseDate ?? item.purchase_date ?? null
             }));
         }
@@ -3227,6 +3261,7 @@
         }
 
         async function saveBudgetData() {
+            if (!canViewBudget()) return false;
             const rows = [];
             budgetData.forEach(monthData => {
                 (monthData.categories || []).forEach(category => {
@@ -3343,6 +3378,17 @@
 
         /** Status options for the order dropdown — Rececionado is never offered as a target (legacy rows may still show it). */
         function buildOrderStatusOptions(currentStatus) {
+            if (!canManageQuotesAndPurchases()) {
+                if (currentStatus === 'Rececionado') {
+                    return ['Rececionado', 'Em Laboratório'];
+                }
+                const options = [];
+                if (currentStatus && currentStatus !== 'Em Laboratório' && currentStatus !== 'Pedido Cancelado') {
+                    options.push(currentStatus);
+                }
+                options.push('Em Laboratório', 'Pedido Cancelado');
+                return options;
+            }
             const standard = ['Pendente', 'Pedido de Cotação', 'Compra Feita', 'Em Laboratório', 'Pedido Cancelado'];
             if (currentStatus === 'Rececionado') {
                 return ['Rececionado', 'Em Laboratório'];
@@ -3614,6 +3660,7 @@
             const value = String(key || '');
             return value.startsWith('budget:')
                 || value.startsWith('pending:')
+                || value.startsWith('quote-stale:')
                 || value.startsWith('to-receive:')
                 || value.startsWith('inactive-product:');
         }
@@ -4132,6 +4179,7 @@
         }
 
         async function updateAnnualBudgetTotal(rawValue) {
+            if (!canViewBudget()) return;
             const parsed = parseFloat(String(rawValue).replace(/[^0-9.-]/g, ''));
             if (!Number.isFinite(parsed) || parsed < 0) return;
 
@@ -4159,9 +4207,84 @@
             renderAlerts();
         }
 
+        function refreshBudgetItemCardDisplay(monthIndex, item) {
+            const card = document.querySelector(`[data-budget-card="${getBudgetCardKey(monthIndex, item.label)}"]`);
+            if (!card) return;
+
+            const usagePercent = getBudgetUsagePercent(item.spent, item.total);
+            const percentLabel = formatBudgetUsagePercent(item.spent, item.total);
+            const progressWidth = getBudgetProgressWidth(item.spent, item.total);
+            const available = item.total - item.spent;
+            const percentEl = card.querySelector('[data-percent]');
+            const progressEl = card.querySelector('[data-progress-bar]');
+            const availableEl = card.querySelector('[data-available]');
+            const totalInput = card.querySelector('[data-budget-field="total"]');
+            const spentInput = card.querySelector('[data-budget-field="spent"]');
+
+            if (totalInput && document.activeElement !== totalInput) totalInput.value = item.total;
+            if (spentInput && document.activeElement !== spentInput) spentInput.value = item.spent;
+
+            if (percentEl) {
+                percentEl.textContent = `${percentLabel}%`;
+                percentEl.className = `shrink-0 text-[11px] font-semibold tabular-nums ${getBudgetPercentTextColor(usagePercent, item.total)}`;
+            }
+            if (progressEl) {
+                progressEl.style.width = `${progressWidth}%`;
+                progressEl.className = `h-full rounded-full transition-all duration-500 ${getBudgetColor(usagePercent, item.total)}`;
+            }
+            if (availableEl) {
+                availableEl.textContent = `€ ${formatCurrency(available)}`;
+                availableEl.className = `mt-0.5 text-xs font-semibold ${getBudgetAvailableColor(available)}`;
+            }
+        }
+
+        function refreshBudgetMonthSummaryDisplays(monthIndex) {
+            const summaryEl = document.getElementById('budgetMonthSummary');
+            if (!summaryEl) return;
+
+            const monthData = budgetData[monthIndex];
+            const categoryData = getCurrentBudgetCategoryData(monthData);
+            const categoryItems = categoryData ? categoryData.items : [];
+            const totalBudget = categoryItems.reduce((sum, item) => sum + item.total, 0);
+            const totalSpent = categoryItems.reduce((sum, item) => sum + item.spent, 0);
+            const totalAvailable = totalBudget - totalSpent;
+            const usagePercent = getBudgetUsagePercent(totalSpent, totalBudget);
+            const percentLabel = formatBudgetUsagePercent(totalSpent, totalBudget);
+            const progressWidth = getBudgetProgressWidth(totalSpent, totalBudget);
+
+            const spentEl = summaryEl.querySelector('[data-budget-summary-spent]');
+            const availableEl = summaryEl.querySelector('[data-budget-summary-available]');
+            const progressEl = summaryEl.querySelector('[data-budget-summary-progress]');
+            const percentEl = summaryEl.querySelector('[data-budget-summary-percent]');
+            const totalInput = summaryEl.querySelector('[data-budget-category-total]');
+
+            if (spentEl) spentEl.textContent = `€ ${formatCurrency(totalSpent)}`;
+            if (availableEl) {
+                availableEl.textContent = `€ ${formatCurrency(totalAvailable)}`;
+                availableEl.className = `text-sm font-semibold ${getBudgetAvailableColor(totalAvailable)}`;
+            }
+            if (progressEl) {
+                progressEl.style.width = `${progressWidth}%`;
+                progressEl.className = `${getBudgetColor(usagePercent, totalBudget)} h-full rounded-full transition-all duration-500`;
+            }
+            if (percentEl) {
+                percentEl.textContent = `${percentLabel}%`;
+                percentEl.className = `shrink-0 text-[11px] font-semibold tabular-nums ${getBudgetPercentTextColor(usagePercent, totalBudget)}`;
+            }
+            if (totalInput && document.activeElement !== totalInput) {
+                totalInput.value = totalBudget;
+            }
+        }
+
         function updateBudgetMonthSummary(monthIndex) {
             const summaryEl = document.getElementById('budgetMonthSummary');
             if (!summaryEl) return;
+
+            const focusedTotalInput = summaryEl.querySelector('[data-budget-category-total]');
+            if (focusedTotalInput && document.activeElement === focusedTotalInput) {
+                refreshBudgetMonthSummaryDisplays(monthIndex);
+                return;
+            }
 
             const monthData = budgetData[monthIndex];
             const categoryData = getCurrentBudgetCategoryData(monthData);
@@ -4195,9 +4318,9 @@
                         </div>
                         <div class="text-right">
                             <p class="text-[10px] text-slate-500">Gasto</p>
-                            <p class="text-base font-semibold text-slate-900">€ ${formatCurrency(totalSpent)}</p>
+                            <p class="text-base font-semibold text-slate-900" data-budget-summary-spent>€ ${formatCurrency(totalSpent)}</p>
                             <p class="mt-1.5 text-[10px] text-slate-500">Disponível</p>
-                            <p class="text-sm font-semibold ${getBudgetAvailableColor(totalAvailable)}">€ ${formatCurrency(totalAvailable)}</p>
+                            <p class="text-sm font-semibold ${getBudgetAvailableColor(totalAvailable)}" data-budget-summary-available>€ ${formatCurrency(totalAvailable)}</p>
                         </div>
                     </div>
                     <div class="mt-3 flex items-center gap-2">
@@ -4224,6 +4347,7 @@
         }
 
         async function updateCategoryBudgetTotal(monthIndex, categoryLabel, rawValue) {
+            if (!canViewBudget()) return;
             const monthData = budgetData[monthIndex];
             if (!monthData) return;
 
@@ -4248,11 +4372,14 @@
             }
 
             await saveBudgetData();
-            renderBudgetMonthContent();
+            items.forEach(item => refreshBudgetItemCardDisplay(monthIndex, item));
+            refreshBudgetMonthSummaryDisplays(monthIndex);
+            updateBudgetAnnualSummary();
             renderAlerts();
         }
 
         async function updateBudgetValue(monthIndex, itemLabel, field, rawValue) {
+            if (!canViewBudget()) return;
             const monthData = budgetData[monthIndex];
             if (!monthData) return;
 
@@ -4262,30 +4389,7 @@
 
             const parsed = parseFloat(String(rawValue).replace(/[^0-9.-]/g, ''));
             item[field] = Number.isFinite(parsed) ? parsed : 0;
-
-            const card = document.querySelector(`[data-budget-card="${getBudgetCardKey(monthIndex, itemLabel)}"]`);
-            if (card) {
-                const usagePercent = getBudgetUsagePercent(item.spent, item.total);
-                const percentLabel = formatBudgetUsagePercent(item.spent, item.total);
-                const progressWidth = getBudgetProgressWidth(item.spent, item.total);
-                const available = item.total - item.spent;
-                const percentEl = card.querySelector('[data-percent]');
-                const progressEl = card.querySelector('[data-progress-bar]');
-                const availableEl = card.querySelector('[data-available]');
-
-                if (percentEl) {
-                    percentEl.textContent = `${percentLabel}%`;
-                    percentEl.className = `shrink-0 text-[11px] font-semibold tabular-nums ${getBudgetPercentTextColor(usagePercent, item.total)}`;
-                }
-                if (progressEl) {
-                    progressEl.style.width = `${progressWidth}%`;
-                    progressEl.className = `h-full rounded-full transition-all duration-500 ${getBudgetColor(usagePercent, item.total)}`;
-                }
-                if (availableEl) {
-                    availableEl.textContent = `€ ${formatCurrency(available)}`;
-                    availableEl.className = `mt-0.5 text-xs font-semibold ${getBudgetAvailableColor(available)}`;
-                }
-            }
+            refreshBudgetItemCardDisplay(monthIndex, item);
 
             updateBudgetMonthSummary(monthIndex);
             updateBudgetAnnualSummary();
@@ -4346,6 +4450,7 @@
                                     <input
                                         type="text"
                                         inputmode="numeric"
+                                        data-budget-field="spent"
                                         value="${item.spent}"
                                         onfocus="this.select()"
                                         oninput="updateBudgetValue(${activeBudgetMonth}, '${item.label}', 'spent', this.value)"
@@ -4359,6 +4464,7 @@
                                     <input
                                         type="text"
                                         inputmode="numeric"
+                                        data-budget-field="total"
                                         value="${item.total}"
                                         onfocus="this.select()"
                                         oninput="updateBudgetValue(${activeBudgetMonth}, '${item.label}', 'total', this.value)"
@@ -4719,6 +4825,7 @@
         }
 
         function togglePanel(id) {
+            if (id === 'budgetPanel' && !canViewBudget()) return;
             const panels = ['budgetPanel', 'alertPanel', 'historyPanel'];
             panels.forEach(p => {
                 if (p !== id) document.getElementById(p).classList.add('translate-x-full');
@@ -4902,6 +5009,7 @@
         }
 
         function addOrderQuoteRow(quote) {
+            if (!canManageQuotesAndPurchases()) return;
             const list = document.getElementById('quote_list');
             if (!list) return;
             list.insertAdjacentHTML('beforeend', createOrderQuoteRowHtml(quote || { date: getTodayDateString() }));
@@ -4909,6 +5017,7 @@
         }
 
         function removeOrderQuoteRow(button) {
+            if (!canManageQuotesAndPurchases()) return;
             const row = button?.closest('.order-quote-row');
             if (row) row.remove();
             updateQuotePriceComparison();
@@ -5094,9 +5203,14 @@
             if (!item) return;
 
             const forceMode = options.mode;
-            const quotesEditable = forceMode === 'quote'
+            let quotesEditable = forceMode === 'quote'
                 || (!forceMode && isPurchaseQuotesEditableStatus(item.status));
-            const isPurchase = forceMode === 'purchase';
+            let isPurchase = forceMode === 'purchase';
+
+            if (!canManageQuotesAndPurchases()) {
+                quotesEditable = false;
+                isPurchase = false;
+            }
 
             purchaseModalMode = isPurchase ? 'purchase' : (quotesEditable ? 'quote' : 'view');
 
@@ -5198,6 +5312,7 @@
         }
 
         function openQuoteModal(index) {
+            if (!canManageQuotesAndPurchases()) return;
             // Pedido de Cotação flow: always editable Cotações tab inside Detalhes da Compra
             openOrderDetailsModal(index, { mode: 'quote', initialTab: 'cotacoes' });
         }
@@ -5207,12 +5322,14 @@
         }
 
         async function saveQuoteModal() {
+            if (!canManageQuotesAndPurchases()) return;
             const index = document.getElementById('quote_index').value;
             if (index === '') return;
 
             const quoteData = collectQuoteModalFields();
             if (quoteData.error) return alert(quoteData.error);
 
+            const previousStatus = shoppingList[index].status;
             shoppingList[index].status = 'Pedido de Cotação';
             shoppingList[index].quoteRequested = true;
             shoppingList[index].quoteDate = quoteData.quoteDate;
@@ -5234,10 +5351,15 @@
                 selected_price: item.selected_price
             };
 
-            const { error } = await supabaseClient
-                .from("shopping_list")
-                .update(updates)
-                .eq("id", item.id);
+            const existingQuotedAt = getOrderFieldValue(item, 'quotedAt', 'quoted_at');
+            if (previousStatus !== 'Pedido de Cotação' && !existingQuotedAt) {
+                const quotedAt = getNowDateTimeString();
+                item.quotedAt = quotedAt;
+                item.quoted_at = quotedAt;
+                updates.quoted_at = quotedAt;
+            }
+
+            const { error } = await updateShoppingListRow(item.id, updates);
 
             if (error) {
                 console.error("Erro ao guardar cotação:", error);
@@ -5248,6 +5370,7 @@
             closePurchaseDetailModal();
             document.getElementById('quote_index').value = '';
             renderShopping();
+            renderAlerts();
         }
 
         function openModalPedido() {
@@ -5276,6 +5399,7 @@
         }
 
         function editarPedido(index) {
+            if (!canEditPurchaseOrders()) return;
             const item = shoppingList[index];
             document.getElementById('modalPedidoTitle').innerText = "Editar Pedido de Compra";
             document.getElementById('req_index').value = index;
@@ -5381,6 +5505,11 @@
                 return;
             }
 
+            if (!canManageQuotesAndPurchases() && (novoStatus === 'Pedido de Cotação' || novoStatus === 'Compra Feita')) {
+                if (selectEl) selectEl.value = item.status;
+                return;
+            }
+
             if (novoStatus === 'Compra Feita' && item.status !== 'Compra Feita') {
                 selectEl.value = item.status;
                 openPurchaseCostModal(index);
@@ -5433,6 +5562,9 @@
         }
 
         async function alterarStatusPedido(index, novoStatus) {
+            if (!canManageQuotesAndPurchases() && (novoStatus === 'Pedido de Cotação' || novoStatus === 'Compra Feita')) {
+                return;
+            }
             const previousStatus = shoppingList[index].status;
 
             if (novoStatus === 'Em Laboratório' && previousStatus === 'Compra Feita') {
@@ -5839,6 +5971,7 @@
         }
 
         function openPurchaseCostModal(index) {
+            if (!canManageQuotesAndPurchases()) return;
             // Compra Feita flow: Dados editable; Cotações + Histórico always visible (quotes read-only)
             openOrderDetailsModal(index, { mode: 'purchase', initialTab: 'dados' });
         }
@@ -5993,6 +6126,7 @@
         }
 
         async function confirmarCompraDetalhes() {
+            if (!canManageQuotesAndPurchases()) return;
             const index = document.getElementById('purchaseCostIndex').value;
             if (index === "") return;
 
@@ -6105,6 +6239,7 @@
             const lab = labs.join(', ');
 
             if (index !== "") {
+                if (!canEditPurchaseOrders()) return;
                 // Edit: keep original requester — do not overwrite from current user
                 shoppingList[index].name = name;
                 shoppingList[index].brand = brand;
@@ -6861,9 +6996,11 @@
                                 <button type="button" title="Detalhes da compra" onclick="openOrderDetailsModal(${item.originalIndex})" class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-slate-500 hover:text-slate-700 hover:border-slate-300 transition">
                                     <i class="fa-solid fa-receipt text-xs"></i>
                                 </button>
+                                ${canEditPurchaseOrders() ? `
                                 <button onclick="editarPedido(${item.originalIndex})" class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-slate-500 hover:text-slate-700 hover:border-slate-300 transition">
                                     <i class="fa-solid fa-pen-to-square text-xs"></i>
                                 </button>
+                                ` : ''}
                                 <button onclick="openCommentModal(${item.originalIndex})" class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-slate-500 hover:text-slate-700 hover:border-slate-300 transition">
                                     <i class="fa-solid fa-comment-dots text-xs"></i>
                                 </button>
@@ -6911,12 +7048,14 @@
                         <td class="text-sm font-mono text-slate-600">${escapeHtml(item.reference || '—')}</td>
                         <td class="text-sm text-slate-700">${escapeHtml(item.brand || '—')}</td>
                         <td class="flex flex-wrap gap-1">
+                            ${canEditInventoryItems() ? `
                             <button onclick="openInventoryModal(${index})" class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-slate-500 hover:text-slate-700 hover:border-slate-300 transition" title="Editar">
                                 <i class="fa-solid fa-pen-to-square text-xs"></i>
                             </button>
                             <button onclick="deleteInventoryItem(${index})" class="inline-flex items-center justify-center rounded-lg border border-rose-200 px-2.5 py-1.5 text-rose-500 hover:text-rose-700 hover:border-rose-300 transition" title="Remover">
                                 <i class="fa-solid fa-trash text-xs"></i>
                             </button>
+                            ` : '<span class="text-xs text-slate-400">—</span>'}
                         </td>
                     </tr>`;
             });
@@ -7180,6 +7319,24 @@
             return Math.floor((today - start) / (1000 * 60 * 60 * 24));
         }
 
+        function getQuotedAt(item) {
+            return getOrderFieldValue(item, 'quotedAt', 'quoted_at');
+        }
+
+        function daysSinceTimestamp(value) {
+            if (!value) return 0;
+            const start = new Date(value);
+            if (Number.isNaN(start.getTime())) return 0;
+            return Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24));
+        }
+
+        function isOlderThanStaleDays(value) {
+            if (!value) return false;
+            const start = new Date(value);
+            if (Number.isNaN(start.getTime())) return false;
+            return (Date.now() - start.getTime()) > (ALERT_STALE_DAYS * 24 * 60 * 60 * 1000);
+        }
+
         function monthsSince(dateStr) {
             if (!dateStr) return Infinity;
             const [year, month, day] = dateStr.split('-').map(Number);
@@ -7231,6 +7388,18 @@
                 .sort((a, b) => daysSince(b.item.date) - daysSince(a.item.date));
         }
 
+        function getStaleQuoteAlerts() {
+            return shoppingList
+                .map((item, index) => ({ item, index }))
+                .filter(({ item }) => {
+                    if (item.status !== 'Pedido de Cotação') return false;
+                    const quotedAt = getQuotedAt(item);
+                    if (!quotedAt) return false;
+                    return isOlderThanStaleDays(quotedAt);
+                })
+                .sort((a, b) => daysSinceTimestamp(getQuotedAt(b.item)) - daysSinceTimestamp(getQuotedAt(a.item)));
+        }
+
         function getStaleToReceiveOrderAlerts() {
             return shoppingList
                 .map((item, index) => ({ item, index }))
@@ -7274,6 +7443,14 @@
         function getPendingOrderAlertKey(entry) {
             const item = entry.item;
             return `pending:${[item.date, item.name, item.catalog, item.lab, item.requester].map(value => String(value || '').trim().toLowerCase()).join('|')}`;
+        }
+
+        function getStaleQuoteAlertKey(entry) {
+            const item = entry.item;
+            const id = String(item?.id || '').trim();
+            if (id) return `quote-stale:${id}`;
+            const quotedAt = getQuotedAt(item);
+            return `quote-stale:${[quotedAt, item.name, item.catalog, item.lab, item.requester].map(value => String(value || '').trim().toLowerCase()).join('|')}`;
         }
 
         function getToReceiveOrderAlertKey(entry) {
@@ -7331,6 +7508,9 @@
             }
             if (key.startsWith('pending:')) {
                 return getStalePendingOrderAlerts().find(entry => getPendingOrderAlertKey(entry) === key) || null;
+            }
+            if (key.startsWith('quote-stale:')) {
+                return getStaleQuoteAlerts().find(entry => getStaleQuoteAlertKey(entry) === key) || null;
             }
             if (key.startsWith('to-receive:')) {
                 return getStaleToReceiveOrderAlerts().find(entry => getToReceiveOrderAlertKey(entry) === key) || null;
@@ -7625,6 +7805,7 @@
             const reviewedProductApprovals = productApprovals.filter(item => item.status === 'approved' || item.status === 'rejected');
             const budgetAlerts = showManagerAlerts ? filterActiveSystemAlerts(getBudgetAlerts(), getBudgetAlertKey) : [];
             const stalePendingOrders = showManagerAlerts ? filterActiveSystemAlerts(getStalePendingOrderAlerts(), getPendingOrderAlertKey) : [];
+            const staleQuoteOrders = showManagerAlerts ? filterActiveSystemAlerts(getStaleQuoteAlerts(), getStaleQuoteAlertKey) : [];
             const staleToReceiveOrders = filterActiveSystemAlerts(getStaleToReceiveOrderAlerts(), getToReceiveOrderAlertKey);
             const staleInactiveProducts = filterActiveSystemAlerts(getStaleInactiveProductAlerts(), getInactiveProductAlertKey);
             const doneSystemAlerts = getDoneSystemAlerts();
@@ -7833,6 +8014,38 @@
                 `;
             };
 
+            const renderStaleQuoteOrderCard = ({ item, key }, isDone = false) => {
+                const quotedAt = getQuotedAt(item);
+                const days = daysSinceTimestamp(quotedAt);
+                return `
+                    <div class="rounded-xl border ${isDone ? 'border-slate-200' : 'border-violet-200'} bg-white p-3.5">
+                        <div class="flex gap-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isDone ? 'bg-slate-100' : 'bg-violet-50'}">
+                                <i class="fa-solid fa-file-invoice-dollar ${isDone ? 'text-slate-500' : 'text-violet-600'} text-xs"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <p class="text-xs font-semibold ${isDone ? 'text-slate-500' : 'text-violet-700'}">Pedido de Cotação há mais de ${ALERT_STALE_DAYS} dias</p>
+                                    ${isDone ? '<span class="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">Concluído</span>' : `<span class="rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">${days} dias</span>`}
+                                </div>
+                                <p class="mt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Produto</p>
+                                <p class="mt-0.5 text-sm font-semibold text-slate-900">${escapeHtml(item.name || '—')}</p>
+                                <div class="mt-2 space-y-1 text-xs text-slate-700">
+                                    <p><span class="font-medium text-slate-500">Marca:</span> ${escapeHtml(item.brand || '—')}</p>
+                                    <p><span class="font-medium text-slate-500">Referência:</span> ${escapeHtml(item.catalog || '—')}</p>
+                                    <p><span class="font-medium text-slate-500">Quantidade:</span> ${escapeHtml(item.qty || '—')}</p>
+                                    <p><span class="font-medium text-slate-500">Laboratório:</span> ${escapeHtml(item.lab || '—')}</p>
+                                    <p><span class="font-medium text-slate-500 block">Requerente:</span>${escapeHtml(formatRequesterName(item.requester) || '—')}</p>
+                                </div>
+                                <p class="mt-2 text-[11px] font-medium text-slate-600">Pedido de cotação em ${escapeHtml(formatOrderDateTime(quotedAt) || '—')}</p>
+                                ${renderSystemAlertOriginHtml()}
+                            </div>
+                        </div>
+                        ${key ? renderSystemAlertActions(key, 'quote-stale', isDone) : ''}
+                    </div>
+                `;
+            };
+
             const renderStaleToReceiveOrderCard = ({ item, key }, isDone = false) => {
                 const referenceDate = item.purchaseDate || item.date;
                 const days = daysSince(referenceDate);
@@ -7913,6 +8126,9 @@
                 if (entry.type === 'pending') {
                     return renderStalePendingOrderCard({ item: entry.snapshot.item, key: entry.key }, true);
                 }
+                if (entry.type === 'quote-stale') {
+                    return renderStaleQuoteOrderCard({ item: entry.snapshot.item, key: entry.key }, true);
+                }
                 if (entry.type === 'to-receive') {
                     return renderStaleToReceiveOrderCard({ item: entry.snapshot.item, key: entry.key }, true);
                 }
@@ -7945,6 +8161,15 @@
                     <div class="mb-4">
                         <p class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-amber-600">Pedidos Pendentes</p>
                         <div class="space-y-2">${stalePendingOrders.map(({ item: entry, key }) => renderStalePendingOrderCard({ item: entry.item, key })).join('')}</div>
+                    </div>
+                `
+                : '';
+
+            const staleQuoteOrdersHtml = staleQuoteOrders.length > 0
+                ? `
+                    <div class="mb-4">
+                        <p class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-violet-600">Pedidos de Cotação</p>
+                        <div class="space-y-2">${staleQuoteOrders.map(({ item: entry, key }) => renderStaleQuoteOrderCard({ item: entry.item, key })).join('')}</div>
                     </div>
                 `
                 : '';
@@ -8036,6 +8261,7 @@
             const visibleDoneSystemAlerts = doneSystemAlerts.filter(entry => {
                 if (entry.type === 'budget') return showManagerAlerts;
                 if (entry.type === 'pending') return showManagerAlerts;
+                if (entry.type === 'quote-stale') return showManagerAlerts;
                 return true;
             });
 
@@ -8055,6 +8281,7 @@
                 pendingProductApprovals.length
                 || budgetAlerts.length
                 || stalePendingOrders.length
+                || staleQuoteOrders.length
                 || staleToReceiveOrders.length
                 || staleInactiveProducts.length
                 || activeAlerts.length
@@ -8107,6 +8334,7 @@
                     productApprovalsHtml
                     + budgetAlertsHtml
                     + stalePendingOrdersHtml
+                    + staleQuoteOrdersHtml
                     + staleToReceiveOrdersHtml
                     + staleInactiveProductsHtml
                     + activeHtml
