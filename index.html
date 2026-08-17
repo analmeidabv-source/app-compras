@@ -3603,10 +3603,82 @@
                 || value.startsWith('inactive-product:');
         }
 
+        let systemAlertStatus = [];
+
+        async function loadSystemAlertStatus() {
+            if (!currentUser?.username) {
+                systemAlertStatus = [];
+                return;
+            }
+
+            const { data, error } = await supabaseClient
+                .from("system_alert_status")
+                .select("*")
+                .eq("username", currentUser.username);
+
+            if (error) {
+                console.error("Erro ao carregar system_alert_status:", error);
+                systemAlertStatus = [];
+                return;
+            }
+
+            systemAlertStatus = (data || []).map(item => ({
+                alertKey: item.alert_key,
+                username: item.username,
+                status: item.status,
+                snapshot: item.snapshot ?? null
+            }));
+        }
+
+        async function setSystemAlertStatus(alertKey, status, snapshot = null) {
+            if (!currentUser?.username) {
+                console.warn("setSystemAlertStatus: sem utilizador autenticado.");
+                return;
+            }
+
+            const row = {
+                alert_key: alertKey,
+                username: currentUser.username,
+                status,
+                snapshot: snapshot ?? null,
+                updated_at: new Date().toISOString()
+            };
+
+            const { error } = await supabaseClient
+                .from("system_alert_status")
+                .upsert(row, { onConflict: 'alert_key,username' });
+
+            if (error) {
+                console.error("Erro ao guardar system_alert_status:", error);
+                return;
+            }
+
+            const local = {
+                alertKey,
+                username: currentUser.username,
+                status,
+                snapshot: snapshot ?? null
+            };
+            const idx = systemAlertStatus.findIndex(
+                item => String(item.alertKey) === String(alertKey) && item.username === currentUser.username
+            );
+            if (idx >= 0) {
+                systemAlertStatus[idx] = local;
+            } else {
+                systemAlertStatus.push(local);
+            }
+        }
+
+        function hasSystemAlertStatus(alertKey, status) {
+            return systemAlertStatus.some(
+                item => String(item.alertKey) === String(alertKey) && item.status === status
+            );
+        }
+
         function isSystemAlertHidden(key) {
-            return hasAlertUserStatus(key, 'dismissed')
-                || hasAlertUserStatus(key, 'removed')
-                || hasAlertUserStatus(key, 'done');
+            return hasSystemAlertStatus(key, 'dismissed')
+                || hasSystemAlertStatus(key, 'removed')
+                || hasSystemAlertStatus(key, 'done');
         }
 
         async function migrateAlertsToSupabase() {
@@ -3676,8 +3748,8 @@
             for (const key of keys) {
                 const entry = legacy[key];
                 const status = entry?.status === 'done' ? 'done' : 'dismissed';
-                if (!hasAlertUserStatus(key, status)) {
-                    await setAlertUserStatus(key, status);
+                if (!hasSystemAlertStatus(key, status)) {
+                    await setSystemAlertStatus(key, status, entry?.snapshot || null);
                 }
             }
 
@@ -7133,11 +7205,9 @@
         }
 
         function getSystemAlertDismissal(key) {
-            if (isSystemAlertHidden(key)) {
-                if (hasAlertUserStatus(key, 'done')) {
-                    return { status: 'done', snapshot: resolveSystemAlertSnapshot(key) };
-                }
-                return { status: 'dismissed' };
+            const stored = systemAlertStatus.find(item => String(item.alertKey) === String(key));
+            if (stored) {
+                return { status: stored.status, snapshot: stored.snapshot || null };
             }
             return systemAlertDismissals[key] || null;
         }
@@ -7149,10 +7219,10 @@
         }
 
         function getDoneSystemAlerts() {
-            return alertUserStatus
-                .filter(item => item.status === 'done' && isSystemAlertKey(item.alertId))
+            return systemAlertStatus
+                .filter(item => item.status === 'done' && isSystemAlertKey(item.alertKey))
                 .map(item => {
-                    const key = String(item.alertId);
+                    const key = String(item.alertKey);
                     const snapshot = resolveSystemAlertSnapshot(key);
                     if (!snapshot) return null;
                     return {
@@ -7213,8 +7283,8 @@
             const snapshot = resolveSystemAlertSnapshot(key);
             if (!snapshot) return;
 
-            await setAlertUserStatus(key, 'done');
-            await loadAlertUserStatus();
+            await setSystemAlertStatus(key, 'done', snapshot);
+            await loadSystemAlertStatus();
             renderAlerts();
         }
 
@@ -7223,8 +7293,8 @@
             const alertType = key.split(':')[0];
             if (!canDismissSystemAlertType(alertType)) return;
 
-            await setAlertUserStatus(key, 'dismissed');
-            await loadAlertUserStatus();
+            await setSystemAlertStatus(key, 'dismissed');
+            await loadSystemAlertStatus();
             renderAlerts();
         }
 
@@ -8109,7 +8179,8 @@
             { table: 'users', group: 'users', labels: ['users'] },
             { table: 'product_approvals', group: 'products', labels: [] },
             { table: 'waste_records', group: 'usage', labels: [] },
-            { table: 'alert_user_status', group: 'alerts', labels: [] }
+            { table: 'alert_user_status', group: 'alerts', labels: [] },
+            { table: 'system_alert_status', group: 'alerts', labels: [] }
         ];
 
         const realtimeChannels = new Map();
@@ -8150,6 +8221,7 @@
         async function refreshRealtimeAlerts() {
             alerts = await loadAlerts();
             await loadAlertUserStatus();
+            await loadSystemAlertStatus();
             renderAlerts();
         }
 
@@ -8309,6 +8381,7 @@
             productApprovals = await loadProductApprovals();
             alerts = await loadAlerts();
             await loadAlertUserStatus();
+            await loadSystemAlertStatus();
             await migrateSystemAlertDismissalsToSupabase();
             renderAlerts();
             updateHeaderActionButtons('tab-inventario');
