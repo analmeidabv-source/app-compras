@@ -2,13 +2,19 @@
     global.QCSHOP_APP_INFO = {
         appName: 'QCShop',
         description: 'Gestão de Compras',
-        version: '1.0.1',
-        lastUpdated: '2026-08-14',
-        swCacheName: 'qcshop-v1.0.1',
+        version: '1.0.2',
+        lastUpdated: '2026-08-17',
+        swCacheName: 'qcshop-v1.0.2',
+        swRelease: '1.0.2',
         company: 'Fresenius Kabi',
         developers: ['Ana Almeida', 'Mariana Moniz'],
         copyrightYear: 2026,
         changelog: [
+            {
+                version: '1.0.2',
+                date: '2026-08-17',
+                summary: 'Correção do mecanismo de cache/atualização da PWA: deteção fiável de novas versões publicadas.'
+            },
             {
                 version: '1.0.1',
                 date: '2026-08-14',
