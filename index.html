@@ -3230,7 +3230,7 @@
                 });
             });
 
-            if (!rows.length) return;
+            if (!rows.length) return false;
 
             const { error } = await supabaseClient
                 .from("budgets")
@@ -3238,7 +3238,10 @@
 
             if (error) {
                 console.error("Erro ao guardar budgets:", error);
+                return false;
             }
+
+            return true;
         }
 
         let budgetData = [];
@@ -4274,7 +4277,9 @@
 
             updateBudgetMonthSummary(monthIndex);
             updateBudgetAnnualSummary();
-            await saveBudgetData();
+            const saved = await saveBudgetData();
+            if (!saved) return;
+            budgetData = await loadBudgetData();
             renderAlerts();
         }
 
@@ -6061,10 +6066,14 @@
 
             activeBudgetCategory = categoryLabel;
             activeBudgetMonth = monthIndex;
-            await saveBudgetData();
+            const saved = await saveBudgetData();
+            if (saved) {
+                budgetData = await loadBudgetData();
+            }
             shoppingList = await loadShoppingList();
             renderShopping();
             renderBudgets();
+            renderAlerts();
             closePurchaseDetailModal();
         }
 
@@ -8355,6 +8364,7 @@
             if (activeTab.startsWith('tab-compras')) {
                 renderShopping();
             }
+            renderAlerts();
         }
 
         async function refreshRealtimeProducts() {
