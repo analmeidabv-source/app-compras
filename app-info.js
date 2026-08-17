@@ -2,14 +2,19 @@
     global.QCSHOP_APP_INFO = {
         appName: 'QCShop',
         description: 'Gestão de Compras',
-        version: '1.0.2',
+        version: '1.0.3',
         lastUpdated: '2026-08-17',
-        swCacheName: 'qcshop-v1.0.2',
-        swRelease: '1.0.2',
+        swCacheName: 'qcshop-v1.0.3',
+        swRelease: '1.0.3',
         company: 'Fresenius Kabi',
         developers: ['Ana Almeida', 'Mariana Moniz'],
         copyrightYear: 2026,
         changelog: [
+            {
+                version: '1.0.3',
+                date: '2026-08-17',
+                summary: 'Refresh dos alertas de Budget após guardar e persistência do Remover nas aprovações de produtos.'
+            },
             {
                 version: '1.0.2',
                 date: '2026-08-17',
