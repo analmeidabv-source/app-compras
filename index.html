@@ -346,6 +346,9 @@
                             <option value="sem_cotacao">Sem cotação</option>
                         </select>
                         <button onclick="clearPurchaseFilters()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 whitespace-nowrap">Limpar</button>
+                        <button type="button" onclick="exportFilteredPurchaseOrdersToExcel()" class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel text-[11px]"></i> Exportar para Excel
+                        </button>
                     </div>
 
                     <details class="rounded-xl border border-slate-200 bg-slate-50">
@@ -408,6 +411,9 @@
                             <option value="sem_cotacao">Sem cotação</option>
                         </select>
                         <button onclick="clearPurchaseFilters()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 whitespace-nowrap">Limpar</button>
+                        <button type="button" onclick="exportFilteredPurchaseOrdersToExcel()" class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel text-[11px]"></i> Exportar para Excel
+                        </button>
                     </div>
 
                     <details class="rounded-xl border border-slate-200 bg-slate-50">
@@ -467,6 +473,9 @@
                             <option value="sem_cotacao">Sem cotação</option>
                         </select>
                         <button onclick="clearPurchaseFilters()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 whitespace-nowrap">Limpar</button>
+                        <button type="button" onclick="exportFilteredPurchaseOrdersToExcel()" class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel text-[11px]"></i> Exportar para Excel
+                        </button>
                     </div>
 
                     <details class="rounded-xl border border-slate-200 bg-slate-50">
@@ -528,6 +537,9 @@
                             <option value="sem_cotacao">Sem cotação</option>
                         </select>
                         <button onclick="clearPurchaseFilters()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 whitespace-nowrap">Limpar</button>
+                        <button type="button" onclick="exportFilteredPurchaseOrdersToExcel()" class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel text-[11px]"></i> Exportar para Excel
+                        </button>
                     </div>
 
                     <details class="rounded-xl border border-slate-200 bg-slate-50">
@@ -6846,33 +6858,15 @@
             renderShopping();
         }
 
-        function renderShopping() {
-            const tableMap = {
-                overview: 'shoppingTableBodyOverview',
-                submitted: 'shoppingTableBodySubmitted',
-                'to-receive': 'shoppingTableBodyToReceive',
-                received: 'shoppingTableBodyReceived'
-            };
-
-            const tbody = document.getElementById(tableMap[currentPurchaseTab] || tableMap.overview);
-            if (!tbody) return;
-
-            tbody.innerHTML = '';
-
+        /** Same filtered list as the table currently shown (tab + search + urgency + quote + sidebar filters). */
+        function getFilteredPurchaseOrders() {
             const controls = getActivePurchaseFilters();
             const searchText = (controls.search?.value || '').trim().toLowerCase();
             const urgencyFilter = controls.urgency?.value || 'todos';
             const quoteFilter = controls.quote?.value || 'todos';
             const activeStatuses = purchaseStatusMap[currentPurchaseTab] || purchaseStatusMap.overview;
-            const showCartColumn = currentPurchaseTab !== 'submitted';
-            const showPurchasedByColumn = currentPurchaseTab === 'overview' || currentPurchaseTab === 'to-receive' || currentPurchaseTab === 'received';
-            const showReceivedByColumn = currentPurchaseTab === 'overview' || currentPurchaseTab === 'received';
-            let tableColspan = 10;
-            if (showCartColumn) tableColspan += 1;
-            if (showPurchasedByColumn) tableColspan += 1;
-            if (showReceivedByColumn) tableColspan += 1;
 
-            const filteredItems = shoppingList
+            return shoppingList
                 .map((item, index) => ({ ...item, originalIndex: index }))
                 .filter(item => activeStatuses.includes(item.status))
                 .filter(item => {
@@ -6921,6 +6915,65 @@
 
                     return matchesText && matchesLab && matchesCart && matchesAnalyst && matchesBrand && matchesReference && matchesUrgency && matchesQuote;
                 });
+        }
+
+        function formatPurchaseExportBrandCatalog(item) {
+            const brand = String(item?.brand || '').trim();
+            const catalog = String(item?.catalog || '').trim();
+            if (brand && catalog) return `${brand} / ${catalog}`;
+            return brand || catalog || '';
+        }
+
+        function exportFilteredPurchaseOrdersToExcel() {
+            if (typeof XLSX === 'undefined') {
+                return alert('Biblioteca de Excel não carregada. Recarregue a página e tente novamente.');
+            }
+
+            const filteredItems = getFilteredPurchaseOrders();
+            if (!filteredItems.length) {
+                return alert('Não existem pedidos para exportar com os filtros atuais.');
+            }
+
+            const rows = filteredItems.map(item => ({
+                'Produto': item.name || '',
+                'Marca / Catálogo': formatPurchaseExportBrandCatalog(item),
+                'Quantidade': item.qty == null || item.qty === '' ? '' : item.qty
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            worksheet['!cols'] = [
+                { wch: 45 },
+                { wch: 40 },
+                { wch: 12 }
+            ];
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Pedidos');
+            XLSX.writeFile(workbook, `Pedidos_${getTodayDateString()}.xlsx`);
+        }
+
+        function renderShopping() {
+            const tableMap = {
+                overview: 'shoppingTableBodyOverview',
+                submitted: 'shoppingTableBodySubmitted',
+                'to-receive': 'shoppingTableBodyToReceive',
+                received: 'shoppingTableBodyReceived'
+            };
+
+            const tbody = document.getElementById(tableMap[currentPurchaseTab] || tableMap.overview);
+            if (!tbody) return;
+
+            tbody.innerHTML = '';
+
+            const showCartColumn = currentPurchaseTab !== 'submitted';
+            const showPurchasedByColumn = currentPurchaseTab === 'overview' || currentPurchaseTab === 'to-receive' || currentPurchaseTab === 'received';
+            const showReceivedByColumn = currentPurchaseTab === 'overview' || currentPurchaseTab === 'received';
+            let tableColspan = 10;
+            if (showCartColumn) tableColspan += 1;
+            if (showPurchasedByColumn) tableColspan += 1;
+            if (showReceivedByColumn) tableColspan += 1;
+
+            const filteredItems = getFilteredPurchaseOrders();
 
             if (filteredItems.length === 0) {
                 tbody.innerHTML = `
