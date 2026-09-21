@@ -3213,7 +3213,8 @@
 
         const costCenterOptions = [
             "U2", "U3", "U4", "U5",
-            "Estabilidades U2", "Estabilidades U3", "Estabilidades U4", "Estabilidades U5"
+            "Estabilidades U2", "Estabilidades U3", "Estabilidades U4", "Estabilidades U5",
+            "Projetos", "Ovalia"
         ];
 
         const budgetCategories = [
@@ -5137,7 +5138,7 @@
             return { quoteDate, quotes, ...selection };
         }
 
-        let purchaseModalMode = 'view'; // 'quote' | 'purchase' | 'view'
+        let purchaseModalMode = 'view'; // 'quote' | 'purchase' | 'edit-cost' | 'view'
         let purchaseModalActiveTab = 'dados';
 
         function isPurchaseQuotesEditableStatus(status) {
@@ -5189,7 +5190,11 @@
             const purchaseSave = document.getElementById('purchaseDetailSaveBtn');
             const quoteSave = document.getElementById('purchaseQuoteSaveBtn');
             if (purchaseSave) {
-                purchaseSave.classList.toggle('hidden', purchaseModalMode !== 'purchase' || tabId !== 'dados');
+                const showPurchaseSave = (purchaseModalMode === 'purchase' || purchaseModalMode === 'edit-cost') && tabId === 'dados';
+                purchaseSave.classList.toggle('hidden', !showPurchaseSave);
+                purchaseSave.textContent = purchaseModalMode === 'edit-cost'
+                    ? 'Guardar centros de custo'
+                    : 'Guardar e Atualizar Budget';
             }
             if (quoteSave) {
                 quoteSave.classList.toggle('hidden', purchaseModalMode !== 'quote' || tabId !== 'cotacoes');
@@ -5212,6 +5217,33 @@
                 el.disabled = !editable;
                 el.classList.toggle('bg-slate-100', !editable);
             });
+        }
+
+        function setPurchaseCostCentersEditable(editable) {
+            const addBtn = document.querySelector('#purchaseDetailPanelDados button[onclick="addPurchaseAllocationRow()"]');
+            if (addBtn) {
+                addBtn.classList.toggle('hidden', !editable);
+                addBtn.disabled = !editable;
+            }
+
+            document.querySelectorAll('#purchaseAllocationRows select, #purchaseAllocationRows input, #purchaseAllocationRows button').forEach(el => {
+                if (el.tagName === 'BUTTON') {
+                    el.classList.toggle('hidden', !editable);
+                    el.disabled = !editable;
+                    return;
+                }
+                el.disabled = !editable;
+                el.classList.toggle('bg-slate-100', !editable);
+                el.classList.toggle('bg-white', editable);
+            });
+        }
+
+        function canEditPurchaseCostCenters(item) {
+            if (!canManageQuotesAndPurchases() || !item) return false;
+            const status = String(item.status || '');
+            const purchasedStatuses = ['Compra Feita', 'Rececionado', 'Em Laboratório'];
+            if (!purchasedStatuses.includes(status)) return false;
+            return Boolean(item.purchaseCost && Array.isArray(item.purchaseCost.allocations));
         }
 
         function ensurePurchaseDetailTabsVisible() {
@@ -5245,12 +5277,15 @@
                 isPurchase = false;
             }
 
-            purchaseModalMode = isPurchase ? 'purchase' : (quotesEditable ? 'quote' : 'view');
+            const canEditCostCenters = !isPurchase && !quotesEditable && canEditPurchaseCostCenters(item);
+            purchaseModalMode = isPurchase
+                ? 'purchase'
+                : (quotesEditable ? 'quote' : (canEditCostCenters ? 'edit-cost' : 'view'));
 
             document.getElementById('purchaseCostIndex').value = index;
             document.getElementById('quote_index').value = index;
 
-            // Purchase-confirm flow starts blank (winner price may prefill); view/quote reuse saved costs when present
+            // Purchase-confirm flow starts blank (winner price may prefill); view/quote/edit-cost reuse saved costs when present
             if (isPurchase) {
                 document.getElementById('purchaseUnitPrice').value = '';
                 document.getElementById('purchaseAdditionalCost').value = '';
@@ -5320,7 +5355,12 @@
                     if (!row) return;
                     const select = row.querySelector('select');
                     const percentInput = row.querySelector('input[type="number"]');
-                    if (select && alloc.center) select.value = alloc.center;
+                    if (select && alloc.center) {
+                        if (alloc.center && ![...select.options].some(opt => opt.value === alloc.center)) {
+                            select.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(alloc.center)}">${escapeHtml(alloc.center)}</option>`);
+                        }
+                        select.value = alloc.center;
+                    }
                     if (percentInput && alloc.percent != null) percentInput.value = alloc.percent;
                 });
             }
@@ -5336,8 +5376,12 @@
 
             renderPurchaseHistoryTimeline(item);
             setPurchaseDadosEditable(isPurchase);
+            if (purchaseModalMode === 'edit-cost') {
+                setPurchaseCostCentersEditable(true);
+            }
             ensurePurchaseDetailTabsVisible();
             updatePurchaseBudgetPreview();
+            updatePurchaseDetailFooter();
 
             const initialTab = options.initialTab || (isPurchase ? 'dados' : (quotesEditable ? 'cotacoes' : 'dados'));
             switchPurchaseDetailTab(initialTab);
@@ -6041,25 +6085,42 @@
             const monthLabelEl = document.getElementById('purchaseBudgetImpactMonth');
             if (!panel || !body) return;
 
-            if (purchaseModalMode !== 'purchase') {
+            if (purchaseModalMode !== 'purchase' && purchaseModalMode !== 'edit-cost') {
                 panel.classList.add('hidden');
                 return;
             }
 
             panel.classList.remove('hidden');
 
-            const monthIndex = new Date().getMonth();
-            const monthName = monthNames[monthIndex] || '';
+            const index = document.getElementById('purchaseCostIndex')?.value;
+            const currentItem = index !== '' && index != null ? shoppingList[index] : null;
+            const monthName = purchaseModalMode === 'edit-cost'
+                ? (getPurchaseMonthName(currentItem) || monthNames[new Date().getMonth()])
+                : (monthNames[new Date().getMonth()] || '');
+            const monthIndex = monthNames.indexOf(monthName);
             if (monthLabelEl) monthLabelEl.textContent = monthName ? `(${monthName})` : '';
 
             const totalCost = parseFloat(document.getElementById('purchaseTotalCost')?.value) || 0;
             const categoryLabel = getPurchaseModalCategoryLabel();
-            const categoryData = budgetData[monthIndex]?.categories?.find(item => item.label === categoryLabel);
+            const categoryData = monthIndex >= 0 ? budgetData[monthIndex]?.categories?.find(item => item.label === categoryLabel) : null;
             const rows = getPurchaseAllocationRowsFromDom();
+            const oldAllocations = Array.isArray(currentItem?.purchaseCost?.allocations)
+                ? currentItem.purchaseCost.allocations
+                : [];
+            const oldTotalCost = Number(currentItem?.purchaseCost?.totalCost) || 0;
 
             if (!rows.length) {
                 body.innerHTML = `<p class="text-xs text-slate-500">Selecione um centro de custo para ver o impacto no budget.</p>`;
                 return;
+            }
+
+            const oldShareByCenter = {};
+            if (purchaseModalMode === 'edit-cost') {
+                oldAllocations.forEach(({ center, percent }) => {
+                    const key = String(center || '').trim();
+                    if (!key) return;
+                    oldShareByCenter[key] = (oldShareByCenter[key] || 0) + (oldTotalCost * (Number(percent) || 0)) / 100;
+                });
             }
 
             const lines = rows.map(({ center, percent }) => {
@@ -6068,7 +6129,8 @@
                 if (!budgetItem) {
                     return { center, percent, purchaseShare, available: null, after: null, found: false };
                 }
-                const available = (budgetItem.total || 0) - (budgetItem.spent || 0);
+                const oldShare = oldShareByCenter[String(center || '').trim()] || 0;
+                const available = ((budgetItem.total || 0) - (budgetItem.spent || 0)) + oldShare;
                 return {
                     center,
                     percent,
@@ -6096,13 +6158,16 @@
                     ? 'border-rose-200 bg-rose-50'
                     : 'border-emerald-200 bg-emerald-50';
                 const afterLabel = afterNegative ? 'Excede o budget' : 'Dentro do budget';
+                const availableLabel = purchaseModalMode === 'edit-cost'
+                    ? 'Budget disponível (sem esta compra)'
+                    : 'Budget disponível atual';
 
                 return `
                     <div class="rounded-xl border ${boxClass} px-3 py-2.5">
                         <p class="text-xs font-semibold text-slate-800">${line.center}${rows.length > 1 ? ` (${line.percent}%)` : ''} · ${categoryLabel}</p>
                         <div class="mt-2 grid gap-1.5 text-[11px]">
                             <div class="flex justify-between gap-3">
-                                <span class="text-slate-500">Budget disponível atual</span>
+                                <span class="text-slate-500">${availableLabel}</span>
                                 <span class="font-semibold tabular-nums text-slate-800">${formatPurchaseEuro(line.available)}</span>
                             </div>
                             <div class="flex justify-between gap-3">
@@ -6118,6 +6183,21 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        function adjustBudgetSpentForAllocations(monthName, categoryLabel, totalCost, allocations, sign) {
+            const monthIndex = monthNames.indexOf(monthName);
+            if (monthIndex < 0) return;
+            const categoryData = budgetData[monthIndex]?.categories?.find(item => item.label === categoryLabel);
+            if (!categoryData) return;
+
+            (allocations || []).forEach(({ center, percent }) => {
+                const budgetItem = categoryData.items.find(item => item.label === center);
+                if (!budgetItem) return;
+                const delta = (Number(totalCost) || 0) * (Number(percent) || 0) / 100;
+                budgetItem.spent = (Number(budgetItem.spent) || 0) + (sign * delta);
+                if (budgetItem.spent < 0) budgetItem.spent = 0;
+            });
         }
 
         function addPurchaseAllocationRow() {
@@ -6163,22 +6243,26 @@
             const index = document.getElementById('purchaseCostIndex').value;
             if (index === "") return;
 
+            const isEditCost = purchaseModalMode === 'edit-cost';
+            const existingItem = shoppingList[index];
+            if (!existingItem) return;
+
             const unitPrice = parseFloat(document.getElementById('purchaseUnitPrice').value) || 0;
             const additionalCost = parseFloat(document.getElementById('purchaseAdditionalCost').value) || 0;
             const totalCost = parseFloat(document.getElementById('purchaseTotalCost').value) || 0;
             const cartNumber = (document.getElementById('purchaseCartNumber').value || '').trim();
 
-            if (!cartNumber) {
+            if (!isEditCost && !cartNumber) {
                 return alert("Indique o nº de carrinho.");
             }
 
-            const categoryLabel = shoppingList[index].category || shoppingList[index].purchaseCategory || activeBudgetCategory || 'Padrões';
+            const categoryLabel = existingItem.category || existingItem.purchaseCategory || activeBudgetCategory || 'Padrões';
 
-            const rows = Array.from(document.querySelectorAll('[data-allocation-row]')).map(row => {
-                const center = row.querySelector('select').value;
-                const percent = parseFloat(row.querySelector('input').value) || 0;
+            const rows = Array.from(document.querySelectorAll('#purchaseAllocationRows [data-allocation-row]')).map(row => {
+                const center = row.querySelector('select')?.value || '';
+                const percent = parseFloat(row.querySelector('input[type="number"]')?.value) || 0;
                 return { center, percent };
-            });
+            }).filter(row => row.center);
 
             const totalPercent = rows.reduce((sum, row) => sum + row.percent, 0);
 
@@ -6188,6 +6272,53 @@
 
             if (Math.abs(totalPercent - 100) > 0.001) {
                 return alert("A soma das percentagens tem de ser 100%.");
+            }
+
+            if (isEditCost) {
+                const oldCost = existingItem.purchaseCost || {};
+                const oldAllocations = Array.isArray(oldCost.allocations) ? oldCost.allocations : [];
+                const oldTotalCost = Number(oldCost.totalCost) || 0;
+                const monthName = getPurchaseMonthName(existingItem) || oldCost.month || monthNames[new Date().getMonth()];
+                const monthIndex = monthNames.indexOf(monthName);
+
+                adjustBudgetSpentForAllocations(monthName, categoryLabel, oldTotalCost, oldAllocations, -1);
+                adjustBudgetSpentForAllocations(monthName, categoryLabel, oldTotalCost, rows, 1);
+
+                shoppingList[index].purchaseCost = {
+                    ...oldCost,
+                    unitPrice: oldCost.unitPrice ?? unitPrice,
+                    additionalCost: oldCost.additionalCost ?? additionalCost,
+                    totalCost: oldTotalCost || totalCost,
+                    month: monthName,
+                    allocations: rows
+                };
+
+                const item = shoppingList[index];
+                if (!item?.id) return alert("Pedido inválido.");
+
+                const { error: updateError } = await updateShoppingListRow(item.id, {
+                    purchaseCost: item.purchaseCost
+                });
+
+                if (updateError) {
+                    console.error("Erro ao atualizar centros de custo:", updateError);
+                    return alert("Erro ao guardar os centros de custo no Supabase.");
+                }
+
+                if (monthIndex >= 0) {
+                    activeBudgetMonth = monthIndex;
+                }
+                activeBudgetCategory = categoryLabel;
+                const saved = await saveBudgetData();
+                if (saved) {
+                    budgetData = await loadBudgetData();
+                }
+                shoppingList = await loadShoppingList();
+                renderShopping();
+                renderBudgets();
+                renderAlerts();
+                closePurchaseDetailModal();
+                return;
             }
 
             const monthIndex = new Date().getMonth();
@@ -6233,15 +6364,7 @@
                 return alert("Erro ao registar a compra no Supabase.");
             }
 
-            const monthData = budgetData[monthIndex];
-            const categoryData = monthData?.categories.find(item => item.label === categoryLabel);
-
-            rows.forEach(({ center, percent }) => {
-                const budgetItem = categoryData?.items.find(item => item.label === center);
-                if (budgetItem) {
-                    budgetItem.spent += (totalCost * percent) / 100;
-                }
-            });
+            adjustBudgetSpentForAllocations(monthName, categoryLabel, totalCost, rows, 1);
 
             activeBudgetCategory = categoryLabel;
             activeBudgetMonth = monthIndex;
