@@ -3397,7 +3397,7 @@
         let currentPurchaseTab = 'overview';
 
         const purchaseStatusMap = {
-            overview: ['Pendente', 'Pedido de Cotação', 'Compra Feita', 'Rececionado', 'Em Laboratório', 'Pedido Cancelado'],
+            overview: ['Pendente', 'Pedido de Cotação', 'Compra Feita', 'Pedido Cancelado'],
             submitted: ['Pendente', 'Pedido de Cotação'],
             'to-receive': ['Compra Feita'],
             received: ['Rececionado', 'Em Laboratório']
@@ -5241,9 +5241,17 @@
         function canEditPurchaseCostCenters(item) {
             if (!canManageQuotesAndPurchases() || !item) return false;
             const status = String(item.status || '');
-            const purchasedStatuses = ['Compra Feita', 'Rececionado', 'Em Laboratório'];
-            if (!purchasedStatuses.includes(status)) return false;
-            return Boolean(item.purchaseCost && Array.isArray(item.purchaseCost.allocations));
+            return ['Compra Feita', 'Rececionado', 'Em Laboratório'].includes(status);
+        }
+
+        function setPurchaseCostValueFieldsEditable(editable) {
+            ['purchaseUnitPrice', 'purchaseAdditionalCost'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.disabled = !editable;
+                el.classList.toggle('bg-slate-100', !editable);
+                el.classList.toggle('bg-white', editable);
+            });
         }
 
         function ensurePurchaseDetailTabsVisible() {
@@ -5291,9 +5299,12 @@
                 document.getElementById('purchaseAdditionalCost').value = '';
                 document.getElementById('purchaseTotalCost').value = '';
             } else {
-                document.getElementById('purchaseUnitPrice').value = item?.purchaseCost?.unitPrice ?? '';
-                document.getElementById('purchaseAdditionalCost').value = item?.purchaseCost?.additionalCost ?? '';
-                document.getElementById('purchaseTotalCost').value = item?.purchaseCost?.totalCost ?? '';
+                const storedUnit = item?.purchaseCost?.unitPrice;
+                const storedAdditional = item?.purchaseCost?.additionalCost;
+                const storedTotal = item?.purchaseCost?.totalCost;
+                document.getElementById('purchaseUnitPrice').value = storedUnit ?? '';
+                document.getElementById('purchaseAdditionalCost').value = storedAdditional ?? '';
+                document.getElementById('purchaseTotalCost').value = storedTotal ?? '';
             }
             document.getElementById('purchaseCartNumber').value = item.cartNumber || '';
             document.getElementById('purchaseAllocationRows').innerHTML = '';
@@ -5342,8 +5353,17 @@
             if (isPurchase && winnerPrice != null) {
                 document.getElementById('purchaseUnitPrice').value = winnerPrice;
                 updatePurchaseTotalCost();
-            } else if (!isPurchase && !document.getElementById('purchaseTotalCost').value && (document.getElementById('purchaseUnitPrice').value || document.getElementById('purchaseAdditionalCost').value)) {
-                updatePurchaseTotalCost();
+            } else if (!isPurchase) {
+                const unitEl = document.getElementById('purchaseUnitPrice');
+                const totalEl = document.getElementById('purchaseTotalCost');
+                if (unitEl && !String(unitEl.value || '').trim() && winnerPrice != null) {
+                    unitEl.value = winnerPrice;
+                }
+                if (totalEl && !String(totalEl.value || '').trim() && (unitEl?.value || document.getElementById('purchaseAdditionalCost')?.value)) {
+                    updatePurchaseTotalCost();
+                } else if (!totalEl?.value && (unitEl?.value || document.getElementById('purchaseAdditionalCost')?.value)) {
+                    updatePurchaseTotalCost();
+                }
             }
 
             addPurchaseAllocationRow();
@@ -5378,6 +5398,10 @@
             setPurchaseDadosEditable(isPurchase);
             if (purchaseModalMode === 'edit-cost') {
                 setPurchaseCostCentersEditable(true);
+                const hasStoredTotal = Number(item?.purchaseCost?.totalCost) > 0;
+                if (!hasStoredTotal) {
+                    setPurchaseCostValueFieldsEditable(true);
+                }
             }
             ensurePurchaseDetailTabsVisible();
             updatePurchaseBudgetPreview();
@@ -6278,20 +6302,32 @@
                 const oldCost = existingItem.purchaseCost || {};
                 const oldAllocations = Array.isArray(oldCost.allocations) ? oldCost.allocations : [];
                 const oldTotalCost = Number(oldCost.totalCost) || 0;
+                const effectiveTotalCost = oldTotalCost || totalCost;
                 const monthName = getPurchaseMonthName(existingItem) || oldCost.month || monthNames[new Date().getMonth()];
                 const monthIndex = monthNames.indexOf(monthName);
 
-                adjustBudgetSpentForAllocations(monthName, categoryLabel, oldTotalCost, oldAllocations, -1);
-                adjustBudgetSpentForAllocations(monthName, categoryLabel, oldTotalCost, rows, 1);
+                if (!(effectiveTotalCost > 0)) {
+                    return alert("Indique o preço/custo da compra para atualizar o budget com os centros de custo.");
+                }
+
+                if (oldAllocations.length && oldTotalCost > 0) {
+                    adjustBudgetSpentForAllocations(monthName, categoryLabel, oldTotalCost, oldAllocations, -1);
+                }
+                adjustBudgetSpentForAllocations(monthName, categoryLabel, effectiveTotalCost, rows, 1);
 
                 shoppingList[index].purchaseCost = {
                     ...oldCost,
                     unitPrice: oldCost.unitPrice ?? unitPrice,
                     additionalCost: oldCost.additionalCost ?? additionalCost,
-                    totalCost: oldTotalCost || totalCost,
+                    totalCost: effectiveTotalCost,
                     month: monthName,
                     allocations: rows
                 };
+                if (!oldTotalCost && totalCost > 0) {
+                    shoppingList[index].purchaseCost.unitPrice = unitPrice;
+                    shoppingList[index].purchaseCost.additionalCost = additionalCost;
+                    shoppingList[index].purchaseCost.totalCost = totalCost;
+                }
 
                 const item = shoppingList[index];
                 if (!item?.id) return alert("Pedido inválido.");
