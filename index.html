@@ -212,6 +212,11 @@
                             <i class="fa-solid fa-box-open w-3.5 text-slate-600"></i>
                             Pedidos Rececionados
                         </button>
+
+                        <button data-nav="tab-compras-cancelados" onclick="switchTab('tab-compras-cancelados')" class="sidebar-nav-btn w-full text-left rounded-lg px-3 py-2 flex items-center gap-2.5 text-xs">
+                            <i class="fa-solid fa-ban w-3.5 text-slate-600"></i>
+                            Pedidos Cancelados
+                        </button>
                     </div>
                 </div>
 
@@ -338,7 +343,6 @@
                             <option value="todos">Todos</option>
                             <option value="urgentes">Urgentes</option>
                             <option value="normais">Normais</option>
-                            <option value="cancelados">Cancelados</option>
                         </select>
                         <select id="purchaseQuoteFilterOverview" onchange="applyPurchaseFilters(true)" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
                             <option value="todos">Cotação: todas</option>
@@ -649,6 +653,89 @@
                         </label>
                         <button type="button" id="purchasePaginationPrevReceived" onclick="changePurchasePage(-1)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none">Anterior</button>
                         <button type="button" id="purchasePaginationNextReceived" onclick="changePurchasePage(1)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none">Seguinte</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-compras-cancelados" class="tab-content flex-1 overflow-hidden p-6 space-y-3">
+                <div class="flex items-center gap-2.5 flex-shrink-0">
+                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50 border border-rose-100">
+                        <i class="fa-solid fa-ban text-rose-600 text-xs"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-900">Pedidos Cancelados</h3>
+                        <p class="text-xs text-slate-500" id="cancelledSummary">0 pedidos nesta categoria</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 p-3 space-y-2 flex-shrink-0">
+                    <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+                        <input type="text" id="purchaseSearchCancelled" onkeyup="applyPurchaseFilters()" placeholder="Pesquisar pedidos..." class="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                        <select id="purchaseUrgencyFilterCancelled" onchange="applyPurchaseFilters(true)" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                            <option value="todos">Todos</option>
+                            <option value="urgentes">Urgentes</option>
+                            <option value="normais">Normais</option>
+                        </select>
+                        <select id="purchaseQuoteFilterCancelled" onchange="applyPurchaseFilters(true)" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                            <option value="todos">Cotação: todas</option>
+                            <option value="com_cotacao">Com cotação</option>
+                            <option value="sem_cotacao">Sem cotação</option>
+                        </select>
+                        <button onclick="clearPurchaseFilters()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 whitespace-nowrap">Limpar</button>
+                        <button type="button" onclick="exportFilteredPurchaseOrdersToExcel()" class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel text-[11px]"></i> Exportar para Excel
+                        </button>
+                    </div>
+
+                    <details class="rounded-xl border border-slate-200 bg-slate-50">
+                        <summary class="px-3 py-2 text-xs font-semibold text-slate-600 cursor-pointer select-none list-none flex items-center justify-between">
+                            <span><i class="fa-solid fa-filter mr-1.5 text-slate-400"></i> Filtros</span>
+                            <span id="purchaseFilterCountCancelled" class="text-[11px] font-medium text-slate-500">Todos</span>
+                        </summary>
+                        <div id="purchaseFilterPanelCancelled" class="max-h-56 overflow-y-auto border-t border-slate-200"></div>
+                    </details>
+                </div>
+
+                <div class="tab-table-wrap bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div class="overflow-auto h-full">
+                        <table class="data-table min-w-full border-collapse">
+                            <thead>
+                                <tr>
+                                    <th class="text-left">Data Pedido</th>
+                                    <th class="text-left">Produto (Qtd)</th>
+                                    <th class="text-left">Marca / Catálogo</th>
+                                    <th class="text-left">Laboratório</th>
+                                    <th class="text-left">Finalidade</th>
+                                    <th class="text-left">Requerente</th>
+                                    <th class="text-left">Prioridade</th>
+                                    <th class="text-left">Estado Atual</th>
+                                    <th class="text-left">Nº Carrinho</th>
+                                    <th class="text-left">Comprado por</th>
+                                    <th class="text-left">Comentário</th>
+                                    <th class="text-left">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="shoppingTableBodyCancelled" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <p class="text-xs text-slate-500">
+                        <span id="purchasePaginationFoundCancelled">0</span> pedidos encontrados
+                        · Página <span id="purchasePaginationPageCancelled">1</span> de <span id="purchasePaginationPagesCancelled">1</span>
+                    </p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label class="text-xs text-slate-500 whitespace-nowrap inline-flex items-center gap-1.5">
+                            Por página
+                            <select id="purchasePageSizeCancelled" onchange="setPurchasePageSize(this.value)" class="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </label>
+                        <button type="button" id="purchasePaginationPrevCancelled" onclick="changePurchasePage(-1)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none">Anterior</button>
+                        <button type="button" id="purchasePaginationNextCancelled" onclick="changePurchasePage(1)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none">Seguinte</button>
                     </div>
                 </div>
             </section>
@@ -3477,10 +3564,11 @@
         let currentPurchaseTab = 'overview';
 
         const purchaseStatusMap = {
-            overview: ['Pendente', 'Pedido de Cotação', 'Compra Feita', 'Pedido Cancelado'],
+            overview: ['Pendente', 'Pedido de Cotação', 'Compra Feita'],
             submitted: ['Pendente', 'Pedido de Cotação'],
             'to-receive': ['Compra Feita'],
-            received: ['Rececionado', 'Em Laboratório']
+            received: ['Rececionado', 'Em Laboratório'],
+            cancelled: ['Pedido Cancelado']
         };
 
         function isOrderStatusEditable(status) {
@@ -4893,6 +4981,7 @@
                 'tab-compras-submetidos': 'Pedidos Pendentes',
                 'tab-compras-receber': 'Pedidos por Receber',
                 'tab-compras-rececionados': 'Pedidos Rececionados',
+                'tab-compras-cancelados': 'Pedidos Cancelados',
                 'tab-frequencia': 'Estatísticas de Uso',
                 'tab-utilizadores': 'Gestão de Utilizadores'
             };
@@ -4907,6 +4996,8 @@
                 currentPurchaseTab = 'to-receive';
             } else if (tabId === 'tab-compras-rececionados') {
                 currentPurchaseTab = 'received';
+            } else if (tabId === 'tab-compras-cancelados') {
+                currentPurchaseTab = 'cancelled';
             }
 
             if (tabId.startsWith('tab-compras')) {
@@ -6670,7 +6761,7 @@
 
             shoppingList = await loadShoppingList();
             closeCancelModal();
-            renderShopping();
+            switchTab('tab-compras-cancelados');
             renderAlerts();
         }
 
@@ -6994,6 +7085,11 @@
                     search: document.getElementById('purchaseSearchReceived'),
                     urgency: document.getElementById('purchaseUrgencyFilterReceived'),
                     quote: document.getElementById('purchaseQuoteFilterReceived')
+                },
+                cancelled: {
+                    search: document.getElementById('purchaseSearchCancelled'),
+                    urgency: document.getElementById('purchaseUrgencyFilterCancelled'),
+                    quote: document.getElementById('purchaseQuoteFilterCancelled')
                 }
             };
 
@@ -7047,7 +7143,8 @@
                 overview: 'purchaseFilterPanel',
                 submitted: 'purchaseFilterPanelSubmitted',
                 'to-receive': 'purchaseFilterPanelToReceive',
-                received: 'purchaseFilterPanelReceived'
+                received: 'purchaseFilterPanelReceived',
+                cancelled: 'purchaseFilterPanelCancelled'
             };
             const panel = document.getElementById(panelMap[currentPurchaseTab] || panelMap.overview);
             if (panel) panel.innerHTML = panelHtml;
@@ -7063,7 +7160,7 @@
             const total = getTotalSelectedPurchaseFilters();
             const text = total === 0 ? 'Todos' : (total === 1 ? '1 selecionado' : `${total} selecionados`);
 
-            ['purchaseFilterCount', 'purchaseFilterCountSubmitted', 'purchaseFilterCountToReceive', 'purchaseFilterCountReceived'].forEach(id => {
+            ['purchaseFilterCount', 'purchaseFilterCountSubmitted', 'purchaseFilterCountToReceive', 'purchaseFilterCountReceived', 'purchaseFilterCountCancelled'].forEach(id => {
                 const countEl = document.getElementById(id);
                 if (countEl) countEl.textContent = text;
             });
@@ -7148,6 +7245,14 @@
                     prev: 'purchasePaginationPrevReceived',
                     next: 'purchasePaginationNextReceived',
                     pageSize: 'purchasePageSizeReceived'
+                },
+                cancelled: {
+                    found: 'purchasePaginationFoundCancelled',
+                    page: 'purchasePaginationPageCancelled',
+                    pages: 'purchasePaginationPagesCancelled',
+                    prev: 'purchasePaginationPrevCancelled',
+                    next: 'purchasePaginationNextCancelled',
+                    pageSize: 'purchasePageSizeCancelled'
                 }
             };
             return map[currentPurchaseTab] || map.overview;
@@ -7169,7 +7274,8 @@
                 'purchasePageSizeOverview',
                 'purchasePageSizeSubmitted',
                 'purchasePageSizeToReceive',
-                'purchasePageSizeReceived'
+                'purchasePageSizeReceived',
+                'purchasePageSizeCancelled'
             ].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = String(purchasePageSize);
@@ -7321,14 +7427,15 @@
                 overview: 'shoppingTableBodyOverview',
                 submitted: 'shoppingTableBodySubmitted',
                 'to-receive': 'shoppingTableBodyToReceive',
-                received: 'shoppingTableBodyReceived'
+                received: 'shoppingTableBodyReceived',
+                cancelled: 'shoppingTableBodyCancelled'
             };
 
             const tbody = document.getElementById(tableMap[currentPurchaseTab] || tableMap.overview);
             if (!tbody) return;
 
             const showCartColumn = currentPurchaseTab !== 'submitted';
-            const showPurchasedByColumn = currentPurchaseTab === 'overview' || currentPurchaseTab === 'to-receive' || currentPurchaseTab === 'received';
+            const showPurchasedByColumn = currentPurchaseTab === 'overview' || currentPurchaseTab === 'to-receive' || currentPurchaseTab === 'received' || currentPurchaseTab === 'cancelled';
             const showReceivedByColumn = currentPurchaseTab === 'overview' || currentPurchaseTab === 'received';
             let tableColspan = 10;
             if (showCartColumn) tableColspan += 1;
@@ -7454,12 +7561,14 @@
             let countCompraFeita = 0;
             let countUrgente = 0;
             let countReceived = 0;
+            let countCancelled = 0;
             for (let i = 0; i < shoppingList.length; i++) {
                 const item = shoppingList[i];
                 if (item.status === 'Pendente' || item.status === 'Pedido de Cotação') countPendente++;
                 if (item.status === 'Compra Feita') countCompraFeita++;
                 if (item.urgent) countUrgente++;
                 if (item.status === 'Rececionado' || item.status === 'Em Laboratório') countReceived++;
+                if (item.status === 'Pedido Cancelado') countCancelled++;
             }
 
             const statPendente = document.getElementById('statPendente');
@@ -7472,9 +7581,11 @@
             const submittedSummary = document.getElementById('submittedSummary');
             const toReceiveSummary = document.getElementById('toReceiveSummary');
             const receivedSummary = document.getElementById('receivedSummary');
+            const cancelledSummary = document.getElementById('cancelledSummary');
             if (submittedSummary) submittedSummary.innerText = `${countPendente} pedidos nesta categoria`;
             if (toReceiveSummary) toReceiveSummary.innerText = `${countCompraFeita} pedidos nesta categoria`;
             if (receivedSummary) receivedSummary.innerText = `${countReceived} pedidos nesta categoria`;
+            if (cancelledSummary) cancelledSummary.innerText = `${countCancelled} pedidos nesta categoria`;
 
             if (rebuildFilters) {
                 renderPurchaseFilters();
