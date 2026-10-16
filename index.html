@@ -384,6 +384,25 @@
                         </table>
                     </div>
                 </div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <p class="text-xs text-slate-500">
+                        <span id="purchasePaginationFoundOverview">0</span> pedidos encontrados
+                        · Página <span id="purchasePaginationPageOverview">1</span> de <span id="purchasePaginationPagesOverview">1</span>
+                    </p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label class="text-xs text-slate-500 whitespace-nowrap inline-flex items-center gap-1.5">
+                            Por página
+                            <select id="purchasePageSizeOverview" onchange="setPurchasePageSize(this.value)" class="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </label>
+                        <button type="button" id="purchasePaginationPrevOverview" onclick="changePurchasePage(-1)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none">Anterior</button>
+                        <button type="button" id="purchasePaginationNextOverview" onclick="changePurchasePage(1)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none">Seguinte</button>
+                    </div>
+                </div>
             </section>
 
             <section id="tab-compras-submetidos" class="tab-content flex-1 overflow-hidden p-6 space-y-3">
@@ -444,6 +463,25 @@
                             </thead>
                             <tbody id="shoppingTableBodySubmitted" class="divide-y divide-slate-100"></tbody>
                         </table>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <p class="text-xs text-slate-500">
+                        <span id="purchasePaginationFoundSubmitted">0</span> pedidos encontrados
+                        · Página <span id="purchasePaginationPageSubmitted">1</span> de <span id="purchasePaginationPagesSubmitted">1</span>
+                    </p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label class="text-xs text-slate-500 whitespace-nowrap inline-flex items-center gap-1.5">
+                            Por página
+                            <select id="purchasePageSizeSubmitted" onchange="setPurchasePageSize(this.value)" class="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </label>
+                        <button type="button" id="purchasePaginationPrevSubmitted" onclick="changePurchasePage(-1)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none">Anterior</button>
+                        <button type="button" id="purchasePaginationNextSubmitted" onclick="changePurchasePage(1)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none">Seguinte</button>
                     </div>
                 </div>
             </section>
@@ -510,6 +548,25 @@
                         </table>
                     </div>
                 </div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <p class="text-xs text-slate-500">
+                        <span id="purchasePaginationFoundToReceive">0</span> pedidos encontrados
+                        · Página <span id="purchasePaginationPageToReceive">1</span> de <span id="purchasePaginationPagesToReceive">1</span>
+                    </p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label class="text-xs text-slate-500 whitespace-nowrap inline-flex items-center gap-1.5">
+                            Por página
+                            <select id="purchasePageSizeToReceive" onchange="setPurchasePageSize(this.value)" class="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </label>
+                        <button type="button" id="purchasePaginationPrevToReceive" onclick="changePurchasePage(-1)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none">Anterior</button>
+                        <button type="button" id="purchasePaginationNextToReceive" onclick="changePurchasePage(1)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none">Seguinte</button>
+                    </div>
+                </div>
             </section>
 
             <section id="tab-compras-rececionados" class="tab-content flex-1 overflow-hidden p-6 space-y-3">
@@ -573,6 +630,25 @@
                             </thead>
                             <tbody id="shoppingTableBodyReceived" class="divide-y divide-slate-100"></tbody>
                         </table>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <p class="text-xs text-slate-500">
+                        <span id="purchasePaginationFoundReceived">0</span> pedidos encontrados
+                        · Página <span id="purchasePaginationPageReceived">1</span> de <span id="purchasePaginationPagesReceived">1</span>
+                    </p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label class="text-xs text-slate-500 whitespace-nowrap inline-flex items-center gap-1.5">
+                            Por página
+                            <select id="purchasePageSizeReceived" onchange="setPurchasePageSize(this.value)" class="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </label>
+                        <button type="button" id="purchasePaginationPrevReceived" onclick="changePurchasePage(-1)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none">Anterior</button>
+                        <button type="button" id="purchasePaginationNextReceived" onclick="changePurchasePage(1)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none">Seguinte</button>
                     </div>
                 </div>
             </section>
@@ -3391,6 +3467,9 @@
             reference: []
         };
         let purchaseFilterDebounceTimer = null;
+        let purchasePage = 1;
+        let purchasePageSize = 50;
+        const purchasePageSizeOptions = [25, 50, 100];
 
         function createEmptyPurchaseFilters() {
             return { lab: [], cart: [], analyst: [], brand: [], reference: [] };
@@ -4831,6 +4910,7 @@
             }
 
             if (tabId.startsWith('tab-compras')) {
+                purchasePage = 1;
                 renderShopping({ rebuildFilters: true });
             }
 
@@ -7014,11 +7094,15 @@
             if (controls.urgency) controls.urgency.value = 'todos';
             if (controls.quote) controls.quote.value = 'todos';
 
+            purchasePage = 1;
             renderShopping({ rebuildFilters: true });
         }
 
         function applyPurchaseFilters(immediate = false) {
-            const run = () => renderShopping({ rebuildFilters: false });
+            const run = () => {
+                purchasePage = 1;
+                renderShopping({ rebuildFilters: false });
+            };
             if (immediate) {
                 if (purchaseFilterDebounceTimer) {
                     clearTimeout(purchaseFilterDebounceTimer);
@@ -7029,6 +7113,105 @@
             }
             if (purchaseFilterDebounceTimer) clearTimeout(purchaseFilterDebounceTimer);
             purchaseFilterDebounceTimer = setTimeout(run, 200);
+        }
+
+        function getPurchasePaginationIds() {
+            const map = {
+                overview: {
+                    found: 'purchasePaginationFoundOverview',
+                    page: 'purchasePaginationPageOverview',
+                    pages: 'purchasePaginationPagesOverview',
+                    prev: 'purchasePaginationPrevOverview',
+                    next: 'purchasePaginationNextOverview',
+                    pageSize: 'purchasePageSizeOverview'
+                },
+                submitted: {
+                    found: 'purchasePaginationFoundSubmitted',
+                    page: 'purchasePaginationPageSubmitted',
+                    pages: 'purchasePaginationPagesSubmitted',
+                    prev: 'purchasePaginationPrevSubmitted',
+                    next: 'purchasePaginationNextSubmitted',
+                    pageSize: 'purchasePageSizeSubmitted'
+                },
+                'to-receive': {
+                    found: 'purchasePaginationFoundToReceive',
+                    page: 'purchasePaginationPageToReceive',
+                    pages: 'purchasePaginationPagesToReceive',
+                    prev: 'purchasePaginationPrevToReceive',
+                    next: 'purchasePaginationNextToReceive',
+                    pageSize: 'purchasePageSizeToReceive'
+                },
+                received: {
+                    found: 'purchasePaginationFoundReceived',
+                    page: 'purchasePaginationPageReceived',
+                    pages: 'purchasePaginationPagesReceived',
+                    prev: 'purchasePaginationPrevReceived',
+                    next: 'purchasePaginationNextReceived',
+                    pageSize: 'purchasePageSizeReceived'
+                }
+            };
+            return map[currentPurchaseTab] || map.overview;
+        }
+
+        function getPurchaseTotalPages(totalItems) {
+            return Math.max(1, Math.ceil(totalItems / purchasePageSize) || 1);
+        }
+
+        function clampPurchasePage(totalItems) {
+            const totalPages = getPurchaseTotalPages(totalItems);
+            if (purchasePage > totalPages) purchasePage = totalPages;
+            if (purchasePage < 1) purchasePage = 1;
+            return totalPages;
+        }
+
+        function syncPurchasePageSizeSelects() {
+            [
+                'purchasePageSizeOverview',
+                'purchasePageSizeSubmitted',
+                'purchasePageSizeToReceive',
+                'purchasePageSizeReceived'
+            ].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = String(purchasePageSize);
+            });
+        }
+
+        function updatePurchasePaginationControls(totalItems) {
+            const totalPages = clampPurchasePage(totalItems);
+            const ids = getPurchasePaginationIds();
+            const foundEl = document.getElementById(ids.found);
+            const pageEl = document.getElementById(ids.page);
+            const pagesEl = document.getElementById(ids.pages);
+            const prevBtn = document.getElementById(ids.prev);
+            const nextBtn = document.getElementById(ids.next);
+
+            if (foundEl) foundEl.textContent = String(totalItems);
+            if (pageEl) pageEl.textContent = String(purchasePage);
+            if (pagesEl) pagesEl.textContent = String(totalPages);
+            if (prevBtn) prevBtn.disabled = purchasePage <= 1;
+            if (nextBtn) nextBtn.disabled = purchasePage >= totalPages || totalItems === 0;
+            syncPurchasePageSizeSelects();
+        }
+
+        function getPagedPurchaseOrders(filteredItems) {
+            clampPurchasePage(filteredItems.length);
+            const start = (purchasePage - 1) * purchasePageSize;
+            return filteredItems.slice(start, start + purchasePageSize);
+        }
+
+        function changePurchasePage(delta) {
+            const nextPage = purchasePage + Number(delta || 0);
+            if (!Number.isFinite(nextPage) || nextPage < 1) return;
+            purchasePage = nextPage;
+            renderShopping({ rebuildFilters: false });
+        }
+
+        function setPurchasePageSize(size) {
+            const parsed = Number(size);
+            purchasePageSize = purchasePageSizeOptions.includes(parsed) ? parsed : 50;
+            purchasePage = 1;
+            syncPurchasePageSizeSelects();
+            renderShopping({ rebuildFilters: false });
         }
 
         /** Same filtered list as the table currently shown (tab + search + urgency + quote + sidebar filters). */
@@ -7153,6 +7336,8 @@
             if (showReceivedByColumn) tableColspan += 1;
 
             const filteredItems = getFilteredPurchaseOrders();
+            updatePurchasePaginationControls(filteredItems.length);
+            const pageItems = getPagedPurchaseOrders(filteredItems);
             const statusClasses = {
                 'Pendente': 'bg-amber-100 text-amber-700 border-amber-300',
                 'Pedido de Cotação': 'bg-violet-100 text-violet-700 border-violet-300',
@@ -7170,7 +7355,7 @@
                         </td>
                     </tr>`;
             } else {
-                const rows = filteredItems.map(item => {
+                const rows = pageItems.map(item => {
                     const statusEditable = isOrderStatusEditable(item.status);
                     const partialReceptionBadge = isPartialReception(item)
                         ? `<span class="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800">⚠️ Receção Parcial</span>`
