@@ -334,13 +334,13 @@
                 <div class="bg-white rounded-xl border border-slate-200 p-3 space-y-2 flex-shrink-0">
                     <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
                         <input type="text" id="purchaseSearchOverview" onkeyup="applyPurchaseFilters()" placeholder="Pesquisar pedidos..." class="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
-                        <select id="purchaseUrgencyFilterOverview" onchange="applyPurchaseFilters()" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                        <select id="purchaseUrgencyFilterOverview" onchange="applyPurchaseFilters(true)" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
                             <option value="todos">Todos</option>
                             <option value="urgentes">Urgentes</option>
                             <option value="normais">Normais</option>
                             <option value="cancelados">Cancelados</option>
                         </select>
-                        <select id="purchaseQuoteFilterOverview" onchange="applyPurchaseFilters()" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                        <select id="purchaseQuoteFilterOverview" onchange="applyPurchaseFilters(true)" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
                             <option value="todos">Cotação: todas</option>
                             <option value="com_cotacao">Com cotação</option>
                             <option value="sem_cotacao">Sem cotação</option>
@@ -400,12 +400,12 @@
                 <div class="bg-white rounded-xl border border-slate-200 p-3 space-y-2 flex-shrink-0">
                     <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
                         <input type="text" id="purchaseSearchSubmitted" onkeyup="applyPurchaseFilters()" placeholder="Pesquisar pedidos..." class="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
-                        <select id="purchaseUrgencyFilterSubmitted" onchange="applyPurchaseFilters()" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                        <select id="purchaseUrgencyFilterSubmitted" onchange="applyPurchaseFilters(true)" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
                             <option value="todos">Todos</option>
                             <option value="urgentes">Urgentes</option>
                             <option value="normais">Normais</option>
                         </select>
-                        <select id="purchaseQuoteFilterSubmitted" onchange="applyPurchaseFilters()" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                        <select id="purchaseQuoteFilterSubmitted" onchange="applyPurchaseFilters(true)" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
                             <option value="todos">Cotação: todas</option>
                             <option value="com_cotacao">Com cotação</option>
                             <option value="sem_cotacao">Sem cotação</option>
@@ -462,12 +462,12 @@
                 <div class="bg-white rounded-xl border border-slate-200 p-3 space-y-2 flex-shrink-0">
                     <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
                         <input type="text" id="purchaseSearchToReceive" onkeyup="applyPurchaseFilters()" placeholder="Pesquisar pedidos..." class="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
-                        <select id="purchaseUrgencyFilterToReceive" onchange="applyPurchaseFilters()" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                        <select id="purchaseUrgencyFilterToReceive" onchange="applyPurchaseFilters(true)" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
                             <option value="todos">Todos</option>
                             <option value="urgentes">Urgentes</option>
                             <option value="normais">Normais</option>
                         </select>
-                        <select id="purchaseQuoteFilterToReceive" onchange="applyPurchaseFilters()" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                        <select id="purchaseQuoteFilterToReceive" onchange="applyPurchaseFilters(true)" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
                             <option value="todos">Cotação: todas</option>
                             <option value="com_cotacao">Com cotação</option>
                             <option value="sem_cotacao">Sem cotação</option>
@@ -526,12 +526,12 @@
                 <div class="bg-white rounded-xl border border-slate-200 p-3 space-y-2 flex-shrink-0">
                     <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
                         <input type="text" id="purchaseSearchReceived" onkeyup="applyPurchaseFilters()" placeholder="Pesquisar pedidos..." class="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
-                        <select id="purchaseUrgencyFilterReceived" onchange="applyPurchaseFilters()" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                        <select id="purchaseUrgencyFilterReceived" onchange="applyPurchaseFilters(true)" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
                             <option value="todos">Todos</option>
                             <option value="urgentes">Urgentes</option>
                             <option value="normais">Normais</option>
                         </select>
-                        <select id="purchaseQuoteFilterReceived" onchange="applyPurchaseFilters()" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
+                        <select id="purchaseQuoteFilterReceived" onchange="applyPurchaseFilters(true)" class="w-full sm:w-40 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-300">
                             <option value="todos">Cotação: todas</option>
                             <option value="com_cotacao">Com cotação</option>
                             <option value="sem_cotacao">Sem cotação</option>
@@ -3390,6 +3390,7 @@
             brand: [],
             reference: []
         };
+        let purchaseFilterDebounceTimer = null;
 
         function createEmptyPurchaseFilters() {
             return { lab: [], cart: [], analyst: [], brand: [], reference: [] };
@@ -4830,7 +4831,7 @@
             }
 
             if (tabId.startsWith('tab-compras')) {
-                renderShopping();
+                renderShopping({ rebuildFilters: true });
             }
 
             if (tabId === 'tab-frequencia') {
@@ -5268,7 +5269,7 @@
             const list = document.getElementById('quote_list');
             if (list) list.innerHTML = '';
             purchaseModalMode = 'view';
-            renderShopping();
+            renderShopping({ rebuildFilters: false });
         }
 
         function openOrderDetailsModal(index, options = {}) {
@@ -5706,6 +5707,7 @@
 
             shoppingList = await loadShoppingList();
             renderShopping();
+            renderAlerts();
         }
 
         function formatPurchaseEuro(value) {
@@ -6474,6 +6476,7 @@
 
                 shoppingList = await loadShoppingList();
                 renderShopping();
+                renderAlerts();
                 closeModal('modalPedido');
                 return;
             } else {
@@ -6505,6 +6508,7 @@
             }
 
             renderShopping();
+            renderAlerts();
             closeModal('modalPedido');
         }
 
@@ -6535,7 +6539,7 @@
             }
 
             shoppingList = await loadShoppingList();
-            renderShopping();
+            renderShopping({ rebuildFilters: false });
             closeModal('modalComment');
         }
 
@@ -6587,6 +6591,7 @@
             shoppingList = await loadShoppingList();
             closeCancelModal();
             renderShopping();
+            renderAlerts();
         }
 
         function fillPurchaseReceptionSummary(item) {
@@ -6798,6 +6803,7 @@
             } else {
                 renderShopping();
             }
+            renderAlerts();
         }
 
         function verHistoricoProduto(produtoNome) {
@@ -6957,15 +6963,14 @@
                 </div>
             `;
 
-            [
-                ['purchaseFilterPanel', 'purchaseFilterCount'],
-                ['purchaseFilterPanelSubmitted', 'purchaseFilterCountSubmitted'],
-                ['purchaseFilterPanelToReceive', 'purchaseFilterCountToReceive'],
-                ['purchaseFilterPanelReceived', 'purchaseFilterCountReceived']
-            ].forEach(([panelId, countId]) => {
-                const panel = document.getElementById(panelId);
-                if (panel) panel.innerHTML = panelHtml;
-            });
+            const panelMap = {
+                overview: 'purchaseFilterPanel',
+                submitted: 'purchaseFilterPanelSubmitted',
+                'to-receive': 'purchaseFilterPanelToReceive',
+                received: 'purchaseFilterPanelReceived'
+            };
+            const panel = document.getElementById(panelMap[currentPurchaseTab] || panelMap.overview);
+            if (panel) panel.innerHTML = panelHtml;
 
             updatePurchaseFilterCount();
         }
@@ -6998,7 +7003,7 @@
             }
 
             renderPurchaseFilters();
-            applyPurchaseFilters();
+            applyPurchaseFilters(true);
         }
 
         function clearPurchaseFilters() {
@@ -7009,12 +7014,21 @@
             if (controls.urgency) controls.urgency.value = 'todos';
             if (controls.quote) controls.quote.value = 'todos';
 
-            renderPurchaseFilters();
-            renderShopping();
+            renderShopping({ rebuildFilters: true });
         }
 
-        function applyPurchaseFilters() {
-            renderShopping();
+        function applyPurchaseFilters(immediate = false) {
+            const run = () => renderShopping({ rebuildFilters: false });
+            if (immediate) {
+                if (purchaseFilterDebounceTimer) {
+                    clearTimeout(purchaseFilterDebounceTimer);
+                    purchaseFilterDebounceTimer = null;
+                }
+                run();
+                return;
+            }
+            if (purchaseFilterDebounceTimer) clearTimeout(purchaseFilterDebounceTimer);
+            purchaseFilterDebounceTimer = setTimeout(run, 200);
         }
 
         /** Same filtered list as the table currently shown (tab + search + urgency + quote + sidebar filters). */
@@ -7024,11 +7038,41 @@
             const urgencyFilter = controls.urgency?.value || 'todos';
             const quoteFilter = controls.quote?.value || 'todos';
             const activeStatuses = purchaseStatusMap[currentPurchaseTab] || purchaseStatusMap.overview;
+            const labFilter = selectedPurchaseFilters.lab;
+            const cartFilter = selectedPurchaseFilters.cart;
+            const analystFilter = selectedPurchaseFilters.analyst;
+            const brandFilter = selectedPurchaseFilters.brand;
+            const referenceFilter = selectedPurchaseFilters.reference;
 
-            return shoppingList
-                .map((item, index) => ({ ...item, originalIndex: index }))
-                .filter(item => activeStatuses.includes(item.status))
-                .filter(item => {
+            const result = [];
+            for (let index = 0; index < shoppingList.length; index++) {
+                const item = shoppingList[index];
+                if (!activeStatuses.includes(item.status)) continue;
+
+                const matchesUrgency =
+                    urgencyFilter === 'todos' ||
+                    (urgencyFilter === 'urgentes' && item.urgent) ||
+                    (urgencyFilter === 'normais' && !item.urgent) ||
+                    (urgencyFilter === 'cancelados' && item.status === 'Pedido Cancelado');
+                if (!matchesUrgency) continue;
+
+                const matchesQuote =
+                    quoteFilter === 'todos' ||
+                    (quoteFilter === 'com_cotacao' && hasOrderQuote(item)) ||
+                    (quoteFilter === 'sem_cotacao' && !hasOrderQuote(item));
+                if (!matchesQuote) continue;
+
+                if (cartFilter.length > 0 && !cartFilter.includes(item.cartNumber || '')) continue;
+                if (analystFilter.length > 0 && !analystFilter.includes(item.requester || '')) continue;
+                if (brandFilter.length > 0 && !brandFilter.includes(item.brand || '')) continue;
+                if (referenceFilter.length > 0 && !referenceFilter.includes(item.catalog || '')) continue;
+
+                if (labFilter.length > 0) {
+                    const itemLabs = getOrderLabs(item);
+                    if (!itemLabs.some(lab => labFilter.includes(lab))) continue;
+                }
+
+                if (searchText) {
                     const quoteSuppliers = getOrderQuotes(item).map(q => q.supplier).join(' ');
                     const haystack = [
                         item.name,
@@ -7044,36 +7088,12 @@
                         quoteSuppliers,
                         item.quoteRequested ? 'cotação cotacao' : ''
                     ].join(' ').toLowerCase();
+                    if (!haystack.includes(searchText)) continue;
+                }
 
-                    const matchesText = !searchText || haystack.includes(searchText);
-                    const itemLabs = getOrderLabs(item);
-                    const matchesLab =
-                        selectedPurchaseFilters.lab.length === 0 ||
-                        itemLabs.some(lab => selectedPurchaseFilters.lab.includes(lab));
-                    const matchesCart =
-                        selectedPurchaseFilters.cart.length === 0 ||
-                        selectedPurchaseFilters.cart.includes(item.cartNumber || '');
-                    const matchesAnalyst =
-                        selectedPurchaseFilters.analyst.length === 0 ||
-                        selectedPurchaseFilters.analyst.includes(item.requester || '');
-                    const matchesBrand =
-                        selectedPurchaseFilters.brand.length === 0 ||
-                        selectedPurchaseFilters.brand.includes(item.brand || '');
-                    const matchesReference =
-                        selectedPurchaseFilters.reference.length === 0 ||
-                        selectedPurchaseFilters.reference.includes(item.catalog || '');
-                    const matchesUrgency =
-                        urgencyFilter === 'todos' ||
-                        (urgencyFilter === 'urgentes' && item.urgent) ||
-                        (urgencyFilter === 'normais' && !item.urgent) ||
-                        (urgencyFilter === 'cancelados' && item.status === 'Pedido Cancelado');
-                    const matchesQuote =
-                        quoteFilter === 'todos' ||
-                        (quoteFilter === 'com_cotacao' && hasOrderQuote(item)) ||
-                        (quoteFilter === 'sem_cotacao' && !hasOrderQuote(item));
-
-                    return matchesText && matchesLab && matchesCart && matchesAnalyst && matchesBrand && matchesReference && matchesUrgency && matchesQuote;
-                });
+                result.push({ ...item, originalIndex: index });
+            }
+            return result;
         }
 
         function formatPurchaseExportBrandCatalog(item) {
@@ -7111,7 +7131,9 @@
             XLSX.writeFile(workbook, `Pedidos_${getTodayDateString()}.xlsx`);
         }
 
-        function renderShopping() {
+        function renderShopping(options = {}) {
+            const rebuildFilters = options.rebuildFilters !== false;
+
             const tableMap = {
                 overview: 'shoppingTableBodyOverview',
                 submitted: 'shoppingTableBodySubmitted',
@@ -7122,8 +7144,6 @@
             const tbody = document.getElementById(tableMap[currentPurchaseTab] || tableMap.overview);
             if (!tbody) return;
 
-            tbody.innerHTML = '';
-
             const showCartColumn = currentPurchaseTab !== 'submitted';
             const showPurchasedByColumn = currentPurchaseTab === 'overview' || currentPurchaseTab === 'to-receive' || currentPurchaseTab === 'received';
             const showReceivedByColumn = currentPurchaseTab === 'overview' || currentPurchaseTab === 'received';
@@ -7133,6 +7153,14 @@
             if (showReceivedByColumn) tableColspan += 1;
 
             const filteredItems = getFilteredPurchaseOrders();
+            const statusClasses = {
+                'Pendente': 'bg-amber-100 text-amber-700 border-amber-300',
+                'Pedido de Cotação': 'bg-violet-100 text-violet-700 border-violet-300',
+                'Compra Feita': 'bg-sky-100 text-sky-700 border-sky-300',
+                'Rececionado': 'bg-teal-100 text-teal-700 border-teal-300',
+                'Em Laboratório': 'bg-emerald-100 text-emerald-700 border-emerald-300',
+                'Pedido Cancelado': 'bg-rose-100 text-rose-700 border-rose-300'
+            };
 
             if (filteredItems.length === 0) {
                 tbody.innerHTML = `
@@ -7142,16 +7170,7 @@
                         </td>
                     </tr>`;
             } else {
-                filteredItems.forEach(item => {
-                    const statusClasses = {
-                        'Pendente': 'bg-amber-100 text-amber-700 border-amber-300',
-                        'Pedido de Cotação': 'bg-violet-100 text-violet-700 border-violet-300',
-                        'Compra Feita': 'bg-sky-100 text-sky-700 border-sky-300',
-                        'Rececionado': 'bg-teal-100 text-teal-700 border-teal-300',
-                        'Em Laboratório': 'bg-emerald-100 text-emerald-700 border-emerald-300',
-                        'Pedido Cancelado': 'bg-rose-100 text-rose-700 border-rose-300'
-                    };
-
+                const rows = filteredItems.map(item => {
                     const statusEditable = isOrderStatusEditable(item.status);
                     const partialReceptionBadge = isPartialReception(item)
                         ? `<span class="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800">⚠️ Receção Parcial</span>`
@@ -7180,7 +7199,7 @@
                             </div>`
                         : '';
 
-                    tbody.innerHTML += `
+                    return `
                         <tr class="hover:bg-slate-50 transition border-b border-slate-100">
                             <td class="text-xs font-mono text-slate-500">${item.date}</td>
                             <td>
@@ -7243,18 +7262,38 @@
                             </td>
                         </tr>`;
                 });
+                tbody.innerHTML = rows.join('');
             }
 
-            document.getElementById('statPendente').innerText = shoppingList.filter(item => item.status === 'Pendente' || item.status === 'Pedido de Cotação').length;
-            document.getElementById('statAtraso').innerText = shoppingList.filter(item => item.status === 'Compra Feita').length;
-            document.getElementById('statUrgente').innerText = shoppingList.filter(item => item.urgent).length;
+            let countPendente = 0;
+            let countCompraFeita = 0;
+            let countUrgente = 0;
+            let countReceived = 0;
+            for (let i = 0; i < shoppingList.length; i++) {
+                const item = shoppingList[i];
+                if (item.status === 'Pendente' || item.status === 'Pedido de Cotação') countPendente++;
+                if (item.status === 'Compra Feita') countCompraFeita++;
+                if (item.urgent) countUrgente++;
+                if (item.status === 'Rececionado' || item.status === 'Em Laboratório') countReceived++;
+            }
 
-            document.getElementById('submittedSummary').innerText = `${shoppingList.filter(item => item.status === 'Pendente' || item.status === 'Pedido de Cotação').length} pedidos nesta categoria`;
-            document.getElementById('toReceiveSummary').innerText = `${shoppingList.filter(item => item.status === 'Compra Feita').length} pedidos nesta categoria`;
-            document.getElementById('receivedSummary').innerText = `${shoppingList.filter(item => item.status === 'Rececionado' || item.status === 'Em Laboratório').length} pedidos nesta categoria`;
+            const statPendente = document.getElementById('statPendente');
+            const statAtraso = document.getElementById('statAtraso');
+            const statUrgente = document.getElementById('statUrgente');
+            if (statPendente) statPendente.innerText = countPendente;
+            if (statAtraso) statAtraso.innerText = countCompraFeita;
+            if (statUrgente) statUrgente.innerText = countUrgente;
 
-            renderPurchaseFilters();
-            renderAlerts();
+            const submittedSummary = document.getElementById('submittedSummary');
+            const toReceiveSummary = document.getElementById('toReceiveSummary');
+            const receivedSummary = document.getElementById('receivedSummary');
+            if (submittedSummary) submittedSummary.innerText = `${countPendente} pedidos nesta categoria`;
+            if (toReceiveSummary) toReceiveSummary.innerText = `${countCompraFeita} pedidos nesta categoria`;
+            if (receivedSummary) receivedSummary.innerText = `${countReceived} pedidos nesta categoria`;
+
+            if (rebuildFilters) {
+                renderPurchaseFilters();
+            }
         }
 
         function renderInventory() {
@@ -8815,6 +8854,7 @@
             if (activeTab.startsWith('tab-compras')) {
                 renderShopping();
             }
+            renderAlerts();
             if (isPanelOpen('historyPanel')) {
                 const productName = document.getElementById('historyProductName')?.innerText?.trim();
                 if (productName) verHistoricoProduto(productName);
@@ -8977,9 +9017,8 @@
             renderInventory();
             budgetData = await loadBudgetData();
             renderBudgets();
-            renderPurchaseFilters();
             shoppingList = await loadShoppingList();
-            renderShopping();
+            renderShopping({ rebuildFilters: true });
             wasteRecords = await loadWasteRecords();
             renderUsageStats();
             productApprovals = await loadProductApprovals();
