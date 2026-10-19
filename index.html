@@ -1217,7 +1217,7 @@
     </div>
 
     <div id="modalConfirmarRececao" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-8">
+        <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden p-8 max-h-[92vh] overflow-y-auto">
             <h3 class="text-lg font-black uppercase italic mb-6 text-center">Confirmar Receção</h3>
 
             <input type="hidden" id="receive_index" value="">
@@ -1232,28 +1232,49 @@
                     <p id="receive_summary_supplier" class="text-sm font-semibold text-slate-800">—</p>
                 </div>
                 <div>
-                    <p class="text-[10px] font-bold uppercase text-slate-400">Quantidade pedida</p>
+                    <p class="text-[10px] font-bold uppercase text-slate-400">Quantidade prevista</p>
                     <p id="receive_summary_ordered_qty" class="text-sm font-semibold text-slate-800">—</p>
                 </div>
             </div>
 
             <div class="space-y-4 mb-6">
-                <div class="grid gap-2 sm:grid-cols-2">
+                <div class="grid gap-2 sm:grid-cols-3">
                     <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                        <p class="text-[10px] font-bold uppercase text-slate-400">Quantidade pedida</p>
+                        <p class="text-[10px] font-bold uppercase text-slate-400">Prevista</p>
                         <p id="receive_ordered_qty_display" class="mt-0.5 text-sm font-semibold text-slate-700">—</p>
                     </div>
+                    <div class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5">
+                        <p class="text-[10px] font-bold uppercase text-sky-700">Já recebida</p>
+                        <p id="receive_accumulated_qty_display" class="mt-0.5 text-sm font-semibold text-sky-800">—</p>
+                    </div>
                     <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-                        <p class="text-[10px] font-bold uppercase text-emerald-700">Quantidade recebida</p>
+                        <p class="text-[10px] font-bold uppercase text-emerald-700">Após esta entrega</p>
                         <p id="receive_received_qty_display" class="mt-0.5 text-sm font-semibold text-emerald-800">—</p>
                     </div>
-                </div>s
+                </div>
                 <p id="receive_partial_hint" class="hidden text-xs font-semibold text-amber-700">
-                    ⚠️ Receção Parcial — em falta: <span id="receive_missing_qty_display">—</span>
+                    ⚠️ Quantidade ainda em falta após esta entrega: <span id="receive_missing_qty_display">—</span>
                 </p>
+
+                <div id="receiveOutcomePanel" class="hidden rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 space-y-3">
+                    <p class="text-xs font-semibold text-amber-900">A quantidade desta entrega não completa o pedido. Indique o motivo: <span class="text-rose-600">*</span></p>
+                    <label class="flex items-start gap-2.5 cursor-pointer">
+                        <input type="radio" name="receive_outcome" value="awaiting_more" class="mt-1 h-4 w-4 border-slate-300 text-amber-600 focus:ring-amber-300" onchange="updateReceiveModalQtyCompare()">
+                        <span class="text-sm text-slate-800"><span class="font-semibold">Ainda vem mais</span><span class="block text-xs text-slate-500 font-normal">Receção parcial — o restante material ainda vai chegar. O pedido permanece em aberto.</span></span>
+                    </label>
+                    <label class="flex items-start gap-2.5 cursor-pointer">
+                        <input type="radio" name="receive_outcome" value="problem" class="mt-1 h-4 w-4 border-slate-300 text-amber-600 focus:ring-amber-300" onchange="updateReceiveModalQtyCompare()">
+                        <span class="text-sm text-slate-800"><span class="font-semibold">Houve um problema</span><span class="block text-xs text-slate-500 font-normal">Entrega incompleta por um problema. O pedido fica pendente de acompanhamento.</span></span>
+                    </label>
+                    <div id="receiveProblemReasonWrap" class="hidden">
+                        <label class="text-[10px] font-bold uppercase text-slate-400">Motivo / observação do problema <span class="text-rose-500">*</span></label>
+                        <textarea id="receive_problem_reason" rows="2" class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2.5 outline-amber-500 text-sm" placeholder="Descreva o problema (obrigatório)"></textarea>
+                    </div>
+                </div>
+
                 <div>
-                    <label class="text-[10px] font-bold uppercase text-slate-400">Quantidade recebida</label>
-                    <input type="number" id="receive_quantity" min="0" step="any" oninput="updateReceiveModalQtyCompare()" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500" placeholder="Quantidade recebida">
+                    <label class="text-[10px] font-bold uppercase text-slate-400">Quantidade recebida nesta entrega</label>
+                    <input type="number" id="receive_quantity" min="0" step="any" oninput="updateReceiveModalQtyCompare()" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500" placeholder="Quantidade desta entrega">
                 </div>
                 <div>
                     <label class="text-[10px] font-bold uppercase text-slate-400">Data de receção</label>
@@ -1261,13 +1282,22 @@
                 </div>
                 <div>
                     <label class="text-[10px] font-bold uppercase text-slate-400">Observações <span class="font-medium normal-case text-slate-400">(opcional)</span></label>
-                    <textarea id="receive_notes" rows="4" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500" placeholder="Notas sobre a receção (opcional)"></textarea>
+                    <textarea id="receive_notes" rows="3" class="w-full rounded-2xl border border-slate-300 px-3 py-3 outline-emerald-500" placeholder="Notas sobre esta entrega (opcional)"></textarea>
+                </div>
+
+                <div id="receiveCloseIncompletePanel" class="hidden rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 space-y-2">
+                    <p class="text-xs text-rose-800">Para encerrar definitivamente sem a quantidade total, use a ação abaixo e indique um motivo. Um problema por si só não encerra o pedido.</p>
+                    <label class="text-[10px] font-bold uppercase text-rose-700">Motivo para encerrar incompleto</label>
+                    <textarea id="receive_close_reason" rows="2" class="w-full rounded-2xl border border-rose-200 bg-white px-3 py-2.5 outline-rose-400 text-sm" placeholder="Motivo do encerramento incompleto"></textarea>
                 </div>
             </div>
 
-            <div class="flex gap-3">
-                <button type="button" onclick="closeReceiveConfirmationModal()" class="flex-1 rounded-2xl border border-slate-300 py-3 font-bold">Cancelar</button>
-                <button type="button" onclick="confirmReceive()" class="flex-1 rounded-2xl bg-emerald-600 py-3 text-white font-bold hover:bg-emerald-700">Confirmar Receção e Enviar para Laboratório</button>
+            <div class="flex flex-col gap-2">
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeReceiveConfirmationModal()" class="flex-1 rounded-2xl border border-slate-300 py-3 font-bold">Cancelar</button>
+                    <button type="button" id="receiveConfirmBtn" onclick="confirmReceive()" class="flex-1 rounded-2xl bg-emerald-600 py-3 text-white font-bold hover:bg-emerald-700">Confirmar Receção e Enviar para Laboratório</button>
+                </div>
+                <button type="button" id="receiveCloseIncompleteBtn" onclick="confirmReceive({ closeIncomplete: true })" class="hidden w-full rounded-2xl border border-rose-300 bg-rose-50 py-2.5 text-sm font-bold text-rose-700 hover:bg-rose-100">Encerrar receção incompleta</button>
             </div>
         </div>
     </div>
@@ -2190,13 +2220,17 @@
             'received_by', 'received_at',
             'received_quantity', 'received_date', 'received_notes',
             'lab_by', 'lab_at',
-            'quoted_at'
+            'quoted_at',
+            'reception_history', 'reception_outcome',
+            'reception_problem_reason', 'reception_close_reason'
         ]);
 
         const SHOPPING_OPTIONAL_ATTR_KEYS = new Set([
             ...SHOPPING_SNAKE_ALIAS_KEYS,
             'purchasedAt', 'labBy', 'labAt', 'quotedAt',
-            'receivedQuantity', 'receivedDate', 'receivedNotes'
+            'receivedQuantity', 'receivedDate', 'receivedNotes',
+            'receptionHistory', 'receptionOutcome',
+            'receptionProblemReason', 'receptionCloseReason'
         ]);
 
         function omitUpdateKeys(updates, keys) {
@@ -3368,6 +3402,12 @@
                 receivedQuantity: item.receivedQuantity ?? item.received_quantity ?? null,
                 receivedDate: item.receivedDate ?? item.received_date ?? null,
                 receivedNotes: item.receivedNotes ?? item.received_notes ?? null,
+                receptionHistory: Array.isArray(item.receptionHistory)
+                    ? item.receptionHistory
+                    : (Array.isArray(item.reception_history) ? item.reception_history : null),
+                receptionOutcome: item.receptionOutcome ?? item.reception_outcome ?? null,
+                receptionProblemReason: item.receptionProblemReason ?? item.reception_problem_reason ?? null,
+                receptionCloseReason: item.receptionCloseReason ?? item.reception_close_reason ?? null,
                 labBy: item.labBy ?? item.lab_by ?? null,
                 labAt: item.labAt ?? item.lab_at ?? null,
                 quotedAt: item.quotedAt ?? item.quoted_at ?? null,
@@ -3622,6 +3662,126 @@
             return item?.receivedQuantity ?? item?.received_quantity ?? '';
         }
 
+        const RECEPTION_META_PREFIX = '<!--kabi-reception-meta:';
+        const RECEPTION_META_SUFFIX = '-->';
+
+        function createEmptyReceptionMeta() {
+            return { outcome: null, problemReason: '', closeReason: '', deliveries: [] };
+        }
+
+        function parseReceptionMetaFromNotes(rawNotes) {
+            const text = String(rawNotes || '');
+            const start = text.indexOf(RECEPTION_META_PREFIX);
+            if (start < 0) return { meta: null, userNotes: text.trim() };
+            const jsonStart = start + RECEPTION_META_PREFIX.length;
+            const end = text.indexOf(RECEPTION_META_SUFFIX, jsonStart);
+            if (end < 0) return { meta: null, userNotes: text.trim() };
+            let meta = null;
+            try {
+                meta = JSON.parse(text.slice(jsonStart, end));
+            } catch (err) {
+                meta = null;
+            }
+            const userNotes = text.slice(end + RECEPTION_META_SUFFIX.length).replace(/^\s+/, '').trim();
+            return { meta, userNotes };
+        }
+
+        function encodeReceptionNotes(userNotes, meta) {
+            const cleanNotes = String(userNotes || '').trim();
+            if (!meta || !Array.isArray(meta.deliveries) || !meta.deliveries.length) {
+                return cleanNotes || null;
+            }
+            return `${RECEPTION_META_PREFIX}${JSON.stringify(meta)}${RECEPTION_META_SUFFIX}\n${cleanNotes}`;
+        }
+
+        function sumReceptionDeliveries(deliveries) {
+            return (deliveries || []).reduce((sum, entry) => {
+                const qty = parseOrderQuantityNumber(entry?.qty);
+                return sum + (qty != null && qty > 0 ? qty : 0);
+            }, 0);
+        }
+
+        function getReceptionMeta(item) {
+            if (!item) return createEmptyReceptionMeta();
+
+            const fromColumn = item.receptionHistory ?? item.reception_history;
+            if (Array.isArray(fromColumn) && fromColumn.length) {
+                return {
+                    outcome: item.receptionOutcome ?? item.reception_outcome ?? null,
+                    problemReason: String(item.receptionProblemReason ?? item.reception_problem_reason ?? ''),
+                    closeReason: String(item.receptionCloseReason ?? item.reception_close_reason ?? ''),
+                    deliveries: fromColumn
+                };
+            }
+
+            const parsed = parseReceptionMetaFromNotes(item.receivedNotes ?? item.received_notes ?? '');
+            if (parsed.meta && Array.isArray(parsed.meta.deliveries)) {
+                return {
+                    outcome: parsed.meta.outcome ?? null,
+                    problemReason: String(parsed.meta.problemReason || ''),
+                    closeReason: String(parsed.meta.closeReason || ''),
+                    deliveries: parsed.meta.deliveries
+                };
+            }
+
+            const legacyQty = parseOrderQuantityNumber(getReceivedQuantity(item));
+            if (legacyQty != null && legacyQty > 0) {
+                const ordered = parseOrderQuantityNumber(getOrderedQuantity(item));
+                const partial = ordered != null && legacyQty < ordered;
+                const status = String(item.status || '');
+                let outcome = 'complete';
+                let kind = 'complete';
+                if (partial && status === 'Compra Feita') {
+                    outcome = 'awaiting_more';
+                    kind = 'partial';
+                } else if (partial) {
+                    outcome = 'closed_incomplete';
+                    kind = 'closed_incomplete';
+                }
+                return {
+                    outcome,
+                    problemReason: '',
+                    closeReason: '',
+                    deliveries: [{
+                        qty: legacyQty,
+                        date: item.receivedDate || item.received_date || '',
+                        notes: parsed.userNotes || '',
+                        by: item.receivedBy || item.received_by || '',
+                        at: item.receivedAt || item.received_at || '',
+                        kind
+                    }]
+                };
+            }
+
+            return createEmptyReceptionMeta();
+        }
+
+        function getReceptionUserNotes(item) {
+            return parseReceptionMetaFromNotes(item?.receivedNotes ?? item?.received_notes ?? '').userNotes;
+        }
+
+        function getAccumulatedReceivedQuantity(item) {
+            const meta = getReceptionMeta(item);
+            if (meta.deliveries.length) return sumReceptionDeliveries(meta.deliveries);
+            return parseOrderQuantityNumber(getReceivedQuantity(item)) || 0;
+        }
+
+        function getReceptionRemainingQuantity(item) {
+            const ordered = parseOrderQuantityNumber(getOrderedQuantity(item));
+            if (ordered == null) return null;
+            return Math.max(0, ordered - getAccumulatedReceivedQuantity(item));
+        }
+
+        function formatQuantityWithOrderUnit(item, value) {
+            if (value == null || Number.isNaN(Number(value))) return '—';
+            const orderedRaw = String(getOrderedQuantity(item) || '').trim();
+            const unitMatch = orderedRaw.match(/[a-zA-Zµμ%°\/]+.*$/);
+            const unit = unitMatch ? ` ${unitMatch[0].trim()}` : '';
+            const n = Number(value);
+            const text = Number.isInteger(n) ? String(n) : String(Math.round(n * 1000) / 1000);
+            return `${text}${unit}`;
+        }
+
         function getOrderSupplier(item) {
             const selected = String(item?.selectedSupplier ?? item?.selected_supplier ?? '').trim();
             if (selected) return selected;
@@ -3630,37 +3790,71 @@
             return withSupplier ? String(withSupplier.supplier).trim() : '—';
         }
 
+        function getSelectedReceiveOutcome() {
+            const checked = document.querySelector('input[name="receive_outcome"]:checked');
+            return checked ? checked.value : '';
+        }
+
         function updateReceiveModalQtyCompare() {
             const indexRaw = document.getElementById('receive_index')?.value;
             const index = Number(indexRaw);
             const item = Number.isFinite(index) ? shoppingList[index] : null;
             const orderedRaw = item ? getOrderedQuantity(item) : '';
             const orderedDisplay = String(orderedRaw || '—');
-            const receivedRaw = document.getElementById('receive_quantity')?.value.trim() || '';
-            const receivedDisplay = receivedRaw || '—';
+            const alreadyReceived = item ? getAccumulatedReceivedQuantity(item) : 0;
+            const thisDeliveryRaw = document.getElementById('receive_quantity')?.value.trim() || '';
+            const thisDeliveryNum = parseOrderQuantityNumber(thisDeliveryRaw) || 0;
+            const afterDelivery = alreadyReceived + thisDeliveryNum;
 
             const orderedEl = document.getElementById('receive_ordered_qty_display');
+            const accumulatedEl = document.getElementById('receive_accumulated_qty_display');
             const receivedEl = document.getElementById('receive_received_qty_display');
             const partialHint = document.getElementById('receive_partial_hint');
             const missingEl = document.getElementById('receive_missing_qty_display');
+            const outcomePanel = document.getElementById('receiveOutcomePanel');
+            const problemWrap = document.getElementById('receiveProblemReasonWrap');
+            const closePanel = document.getElementById('receiveCloseIncompletePanel');
+            const closeBtn = document.getElementById('receiveCloseIncompleteBtn');
+            const confirmBtn = document.getElementById('receiveConfirmBtn');
 
             if (orderedEl) orderedEl.textContent = orderedDisplay;
-            if (receivedEl) receivedEl.textContent = receivedDisplay;
+            if (accumulatedEl) accumulatedEl.textContent = item ? formatQuantityWithOrderUnit(item, alreadyReceived) : '—';
+            if (receivedEl) {
+                receivedEl.textContent = thisDeliveryRaw
+                    ? formatQuantityWithOrderUnit(item, afterDelivery)
+                    : (item ? formatQuantityWithOrderUnit(item, alreadyReceived) : '—');
+            }
 
             const orderedNum = parseOrderQuantityNumber(orderedRaw);
-            const receivedNum = parseOrderQuantityNumber(receivedRaw);
-            const isPartial = orderedNum != null && receivedNum != null && receivedNum < orderedNum;
+            const leavesShortfall = orderedNum != null && thisDeliveryRaw !== '' && afterDelivery < orderedNum;
+            const completes = orderedNum != null && thisDeliveryRaw !== '' && afterDelivery >= orderedNum;
+            const hasOpenShortfall = orderedNum != null && alreadyReceived > 0 && alreadyReceived < orderedNum;
 
-            if (partialHint) partialHint.classList.toggle('hidden', !isPartial);
+            if (partialHint) partialHint.classList.toggle('hidden', !leavesShortfall);
             if (missingEl) {
-                if (isPartial && item) {
-                    missingEl.textContent = formatMissingQuantity({
-                        ...item,
-                        receivedQuantity: receivedRaw,
-                        received_quantity: receivedRaw
-                    }) || '—';
+                if (leavesShortfall && item) {
+                    missingEl.textContent = formatQuantityWithOrderUnit(item, orderedNum - afterDelivery);
                 } else {
                     missingEl.textContent = '—';
+                }
+            }
+
+            if (outcomePanel) outcomePanel.classList.toggle('hidden', !leavesShortfall);
+            const outcome = getSelectedReceiveOutcome();
+            if (problemWrap) problemWrap.classList.toggle('hidden', !(leavesShortfall && outcome === 'problem'));
+
+            if (closePanel) closePanel.classList.toggle('hidden', !(leavesShortfall || hasOpenShortfall));
+            if (closeBtn) closeBtn.classList.toggle('hidden', !(leavesShortfall || hasOpenShortfall));
+
+            if (confirmBtn) {
+                if (completes) {
+                    confirmBtn.textContent = 'Confirmar Receção e Enviar para Laboratório';
+                } else if (leavesShortfall && outcome === 'problem') {
+                    confirmBtn.textContent = 'Registar problema e manter em aberto';
+                } else if (leavesShortfall) {
+                    confirmBtn.textContent = 'Registar entrega (ainda vem mais)';
+                } else {
+                    confirmBtn.textContent = 'Confirmar Receção e Enviar para Laboratório';
                 }
             }
         }
@@ -3682,38 +3876,70 @@
         }
 
         function clearReceiveOrderSummary() {
-            ['receive_summary_product', 'receive_summary_supplier', 'receive_summary_ordered_qty', 'receive_ordered_qty_display', 'receive_received_qty_display', 'receive_missing_qty_display']
+            ['receive_summary_product', 'receive_summary_supplier', 'receive_summary_ordered_qty', 'receive_ordered_qty_display', 'receive_accumulated_qty_display', 'receive_received_qty_display', 'receive_missing_qty_display']
                 .forEach(id => {
                     const el = document.getElementById(id);
                     if (el) el.textContent = '—';
                 });
             document.getElementById('receive_partial_hint')?.classList.add('hidden');
+            document.getElementById('receiveOutcomePanel')?.classList.add('hidden');
+            document.getElementById('receiveProblemReasonWrap')?.classList.add('hidden');
+            document.getElementById('receiveCloseIncompletePanel')?.classList.add('hidden');
+            document.getElementById('receiveCloseIncompleteBtn')?.classList.add('hidden');
+            document.querySelectorAll('input[name="receive_outcome"]').forEach(el => { el.checked = false; });
+            const problemReason = document.getElementById('receive_problem_reason');
+            if (problemReason) problemReason.value = '';
+            const closeReason = document.getElementById('receive_close_reason');
+            if (closeReason) closeReason.value = '';
+            const confirmBtn = document.getElementById('receiveConfirmBtn');
+            if (confirmBtn) confirmBtn.textContent = 'Confirmar Receção e Enviar para Laboratório';
         }
 
         function isPartialReception(item) {
             const ordered = parseOrderQuantityNumber(getOrderedQuantity(item));
-            const received = parseOrderQuantityNumber(getReceivedQuantity(item));
-            if (ordered == null || received == null) return false;
+            const received = getAccumulatedReceivedQuantity(item);
+            if (ordered == null || !(received > 0)) return false;
+            const outcome = getReceptionMeta(item).outcome;
+            if (outcome === 'complete') return false;
             return received < ordered;
+        }
+
+        function hasReceptionProblem(item) {
+            return getReceptionMeta(item).outcome === 'problem';
+        }
+
+        function formatReceptionStatusBadge(item) {
+            if (!item) return '';
+            const outcome = getReceptionMeta(item).outcome;
+            if (outcome === 'problem') {
+                return `<span class="inline-flex rounded-full border border-rose-300 bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-800">⚠️ Receção incompleta — problema</span>`;
+            }
+            if (outcome === 'closed_incomplete') {
+                return `<span class="inline-flex rounded-full border border-rose-300 bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-800">⚠️ Receção encerrada incompleta</span>`;
+            }
+            if (outcome === 'awaiting_more' || (isPartialReception(item) && String(item.status || '') === 'Compra Feita')) {
+                return `<span class="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800">⚠️ Receção parcial — ainda vem mais</span>`;
+            }
+            if (isPartialReception(item)) {
+                return `<span class="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800">⚠️ Receção parcial</span>`;
+            }
+            return '';
         }
 
         function formatMissingQuantity(item) {
             const ordered = parseOrderQuantityNumber(getOrderedQuantity(item));
-            const received = parseOrderQuantityNumber(getReceivedQuantity(item));
-            if (ordered == null || received == null) return null;
+            const received = getAccumulatedReceivedQuantity(item);
+            if (ordered == null) return null;
             const missing = ordered - received;
             if (missing <= 0) return '0';
-            const orderedRaw = String(getOrderedQuantity(item)).trim();
-            const unitMatch = orderedRaw.match(/[a-zA-Zµμ%°\/]+.*$/);
-            const unit = unitMatch ? ` ${unitMatch[0].trim()}` : '';
-            const missingText = Number.isInteger(missing) ? String(missing) : String(Math.round(missing * 100) / 100);
-            return `${missingText}${unit}`;
+            return formatQuantityWithOrderUnit(item, missing);
         }
 
         function hasReceptionData(item) {
             if (!item) return false;
             return Boolean(
                 item.status === 'Rececionado'
+                || getAccumulatedReceivedQuantity(item) > 0
                 || getReceivedQuantity(item)
                 || item.receivedDate || item.received_date
                 || item.receivedNotes || item.received_notes
@@ -6191,26 +6417,39 @@
                 item?.receivedBy || item?.received_by,
                 receivedRaw
             );
-            if (receivedStamp || receivedKey || getReceivedQuantity(item)) {
+            const receptionMeta = getReceptionMeta(item);
+            if (receptionMeta.deliveries.length || receivedStamp || receivedKey || getReceivedQuantity(item)) {
                 const orderedQty = getOrderedQuantity(item);
-                const receivedQty = getReceivedQuantity(item);
-                const partial = isPartialReception(item);
+                const accumulatedQty = getAccumulatedReceivedQuantity(item);
+                const partial = isPartialReception(item) || receptionMeta.outcome === 'problem' || receptionMeta.outcome === 'closed_incomplete';
                 const missingQty = partial ? formatMissingQuantity(item) : null;
                 const qtyParts = [];
-                if (orderedQty) qtyParts.push(`Pedida: ${orderedQty}`);
-                if (receivedQty) qtyParts.push(`Recebida: ${receivedQty}`);
+                if (orderedQty) qtyParts.push(`Prevista: ${orderedQty}`);
+                if (accumulatedQty > 0) qtyParts.push(`Acumulada: ${formatQuantityWithOrderUnit(item, accumulatedQty)}`);
                 if (missingQty) qtyParts.push(`Em falta: ${missingQty}`);
-                const notes = String(item?.receivedNotes || item?.received_notes || '').trim();
+                const notes = getReceptionUserNotes(item);
+                const outcomeLabel = receptionMeta.outcome === 'problem'
+                    ? 'Receção com problema'
+                    : (receptionMeta.outcome === 'closed_incomplete'
+                        ? 'Receção encerrada incompleta'
+                        : (partial ? 'Rececionado (parcial — ainda vem mais)' : 'Rececionado'));
                 events.push({
                     sortKey: receivedKey || '9999-99-99',
                     order: 6,
-                    title: partial ? 'Rececionado (parcial)' : 'Rececionado',
+                    title: outcomeLabel,
                     detail: [
                         receivedStamp?.label || formatPurchaseTimelineDate(receivedKey),
                         qtyParts.join(' · '),
-                        notes ? `Obs: ${notes}` : ''
+                        notes ? `Obs: ${notes}` : '',
+                        receptionMeta.problemReason ? `Problema: ${receptionMeta.problemReason}` : '',
+                        receptionMeta.closeReason ? `Encerramento: ${receptionMeta.closeReason}` : '',
+                        receptionMeta.deliveries.length > 1
+                            ? `Entregas: ${receptionMeta.deliveries.map((d, i) => `#${i + 1} ${d.qty}`).join(', ')}`
+                            : ''
                     ].filter(Boolean).join(' · '),
-                    accent: partial ? 'amber' : 'emerald'
+                    accent: receptionMeta.outcome === 'problem' || receptionMeta.outcome === 'closed_incomplete'
+                        ? 'rose'
+                        : (partial ? 'amber' : 'emerald')
                 });
             }
 
@@ -6830,13 +7069,30 @@
 
             panel.classList.remove('hidden');
 
+            const meta = getReceptionMeta(item);
             const orderedQty = String(getOrderedQuantity(item) || '—');
-            const receivedQty = String(getReceivedQuantity(item) || '—');
-            const partial = isPartialReception(item);
+            const receivedQty = formatQuantityWithOrderUnit(item, getAccumulatedReceivedQuantity(item));
+            const partial = isPartialReception(item) || meta.outcome === 'problem' || meta.outcome === 'closed_incomplete';
             const missing = formatMissingQuantity(item);
 
             const partialBadge = document.getElementById('purchaseReceptionPartialBadge');
-            if (partialBadge) partialBadge.classList.toggle('hidden', !partial);
+            if (partialBadge) {
+                if (meta.outcome === 'problem') {
+                    partialBadge.textContent = '⚠️ Receção incompleta — problema';
+                    partialBadge.classList.remove('hidden', 'border-amber-300', 'bg-amber-50', 'text-amber-800');
+                    partialBadge.classList.add('border-rose-300', 'bg-rose-50', 'text-rose-800');
+                } else if (meta.outcome === 'closed_incomplete') {
+                    partialBadge.textContent = '⚠️ Receção encerrada incompleta';
+                    partialBadge.classList.remove('hidden', 'border-amber-300', 'bg-amber-50', 'text-amber-800');
+                    partialBadge.classList.add('border-rose-300', 'bg-rose-50', 'text-rose-800');
+                } else if (partial) {
+                    partialBadge.textContent = '⚠️ Receção parcial — ainda vem mais';
+                    partialBadge.classList.remove('hidden', 'border-rose-300', 'bg-rose-50', 'text-rose-800');
+                    partialBadge.classList.add('border-amber-300', 'bg-amber-50', 'text-amber-800');
+                } else {
+                    partialBadge.classList.add('hidden');
+                }
+            }
 
             const orderedEl = document.getElementById('purchaseReceptionOrderedQty');
             const receivedEl = document.getElementById('purchaseReceptionReceivedQty');
@@ -6845,7 +7101,7 @@
             if (orderedEl) orderedEl.textContent = orderedQty;
             if (receivedEl) receivedEl.textContent = receivedQty;
             if (missingEl) missingEl.textContent = partial && missing != null ? missing : '—';
-            if (missingRow) missingRow.classList.toggle('hidden', !partial);
+            if (missingRow) missingRow.classList.toggle('hidden', !(partial && meta.outcome !== 'closed_incomplete' && meta.outcome !== 'complete'));
 
             const dateEl = document.getElementById('purchaseReceptionDate');
             if (dateEl) {
@@ -6859,7 +7115,17 @@
             const atEl = document.getElementById('purchaseReceptionAt');
             if (atEl) atEl.textContent = formatOrderDateTime(item.receivedAt || item.received_at) || '—';
 
-            const notes = String(item.receivedNotes || item.received_notes || '').trim();
+            const notesParts = [];
+            const userNotes = getReceptionUserNotes(item);
+            if (userNotes) notesParts.push(userNotes);
+            if (meta.problemReason) notesParts.push(`Problema: ${meta.problemReason}`);
+            if (meta.closeReason) notesParts.push(`Encerramento incompleto: ${meta.closeReason}`);
+            if (meta.deliveries.length > 1) {
+                notesParts.push(
+                    `Entregas: ${meta.deliveries.map((d, i) => `#${i + 1} ${formatQuantityWithOrderUnit(item, d.qty)}${d.date ? ` (${d.date})` : ''}`).join(' · ')}`
+                );
+            }
+            const notes = notesParts.join(' · ');
             const notesRow = document.getElementById('purchaseReceptionNotesRow');
             const notesEl = document.getElementById('purchaseReceptionNotes');
             if (notesRow && notesEl) {
@@ -6890,12 +7156,17 @@
             };
 
             try {
-                const orderedQty = parseOrderQuantityNumber(getOrderedQuantity(item));
+                const remaining = getReceptionRemainingQuantity(item);
                 document.getElementById('receive_index').value = String(index);
                 fillReceiveOrderSummary(item);
-                document.getElementById('receive_quantity').value = orderedQty != null ? orderedQty : '';
+                document.getElementById('receive_quantity').value = remaining != null && remaining > 0 ? remaining : '';
                 document.getElementById('receive_date').value = getTodayDateString();
-                document.getElementById('receive_notes').value = item.receivedNotes || item.received_notes || '';
+                document.getElementById('receive_notes').value = '';
+                const problemReason = document.getElementById('receive_problem_reason');
+                if (problemReason) problemReason.value = '';
+                const closeReason = document.getElementById('receive_close_reason');
+                if (closeReason) closeReason.value = '';
+                document.querySelectorAll('input[name="receive_outcome"]').forEach(el => { el.checked = false; });
                 updateReceiveModalQtyCompare();
             } catch (error) {
                 console.log('Fluxo falhou ao preencher o modal Confirmar Receção', error);
@@ -6951,57 +7222,152 @@
             closeReceiveConfirmationModal();
         }
 
-        async function confirmReceive() {
+        async function confirmReceive(options = {}) {
+            const closeIncomplete = Boolean(options.closeIncomplete);
             const index = Number(document.getElementById('receive_index').value);
             if (!Number.isFinite(index) || index < 0 || !shoppingList[index]) return;
 
-            const receivedQuantityRaw = document.getElementById('receive_quantity').value.trim();
+            const thisDeliveryRaw = document.getElementById('receive_quantity').value.trim();
             const receivedDate = document.getElementById('receive_date').value.trim();
             const receivedNotes = document.getElementById('receive_notes').value.trim();
+            const problemReason = (document.getElementById('receive_problem_reason')?.value || '').trim();
+            const closeReason = (document.getElementById('receive_close_reason')?.value || '').trim();
 
-            if (!receivedQuantityRaw) return alert('Indique a quantidade recebida.');
+            if (!thisDeliveryRaw && !closeIncomplete) {
+                return alert('Indique a quantidade recebida nesta entrega.');
+            }
             if (!receivedDate) return alert('Indique a data de receção.');
 
-            const receivedQuantity = receivedQuantityRaw;
-
-            const receivedBy = getCurrentUserName();
-            const receivedAt = getNowDateTimeString();
-
-            shoppingList[index].status = 'Em Laboratório';
-            shoppingList[index].receivedQuantity = receivedQuantity;
-            shoppingList[index].received_quantity = receivedQuantity;
-            shoppingList[index].receivedDate = receivedDate;
-            shoppingList[index].received_date = receivedDate;
-            shoppingList[index].receivedNotes = receivedNotes || null;
-            shoppingList[index].received_notes = receivedNotes || null;
-            shoppingList[index].receivedBy = receivedBy;
-            shoppingList[index].received_by = receivedBy;
-            shoppingList[index].receivedAt = receivedAt;
-            shoppingList[index].received_at = receivedAt;
-
-            const labPayload = setOrderActorTimestamp(
-                shoppingList[index],
-                'labBy', 'lab_by',
-                'labAt', 'lab_at'
-            );
+            const thisDeliveryQty = parseOrderQuantityNumber(thisDeliveryRaw);
+            if (thisDeliveryRaw && (thisDeliveryQty == null || thisDeliveryQty <= 0)) {
+                return alert('A quantidade desta entrega deve ser maior do que zero.');
+            }
 
             const item = shoppingList[index];
             if (!item?.id) return alert('Pedido inválido.');
 
-            const { error } = await updateShoppingListRow(item.id, {
-                status: 'Em Laboratório',
-                received_quantity: receivedQuantity,
+            const orderedQty = parseOrderQuantityNumber(getOrderedQuantity(item));
+            const previousMeta = getReceptionMeta(item);
+            const alreadyReceived = sumReceptionDeliveries(previousMeta.deliveries);
+            const deliveryQty = thisDeliveryQty != null && thisDeliveryQty > 0 ? thisDeliveryQty : 0;
+            const accumulatedQty = alreadyReceived + deliveryQty;
+
+            if (!closeIncomplete && orderedQty != null && deliveryQty > 0 && accumulatedQty < orderedQty) {
+                const outcomeChoice = getSelectedReceiveOutcome();
+                if (!outcomeChoice) {
+                    return alert('A quantidade é inferior à prevista. Escolha «Ainda vem mais» ou «Houve um problema».');
+                }
+                if (outcomeChoice === 'problem' && !problemReason) {
+                    return alert('Indique o motivo ou observação do problema.');
+                }
+            }
+
+            if (closeIncomplete) {
+                if (!closeReason) {
+                    return alert('Para encerrar a receção incompleta, indique um motivo.');
+                }
+                if (orderedQty != null && accumulatedQty >= orderedQty && deliveryQty > 0) {
+                    return alert('A quantidade acumulada já completa o pedido. Use a confirmação normal para enviar para laboratório.');
+                }
+                if (!(accumulatedQty > 0) && !(deliveryQty > 0)) {
+                    return alert('Não é possível encerrar sem qualquer quantidade recebida. Registe pelo menos uma entrega ou cancele o pedido.');
+                }
+            }
+
+            const receivedBy = getCurrentUserName();
+            const receivedAt = getNowDateTimeString();
+            const completesOrder = orderedQty != null && accumulatedQty >= orderedQty && !closeIncomplete;
+
+            let outcome = 'complete';
+            let deliveryKind = 'complete';
+            if (closeIncomplete) {
+                outcome = 'closed_incomplete';
+                deliveryKind = deliveryQty > 0 ? 'closed_incomplete' : 'closed_incomplete';
+            } else if (!completesOrder) {
+                outcome = getSelectedReceiveOutcome() === 'problem' ? 'problem' : 'awaiting_more';
+                deliveryKind = outcome === 'problem' ? 'problem' : 'partial';
+            }
+
+            const deliveries = previousMeta.deliveries.slice();
+            if (deliveryQty > 0) {
+                deliveries.push({
+                    qty: deliveryQty,
+                    date: receivedDate,
+                    notes: receivedNotes || '',
+                    by: receivedBy,
+                    at: receivedAt,
+                    kind: deliveryKind
+                });
+            }
+
+            const meta = {
+                outcome,
+                problemReason: outcome === 'problem'
+                    ? problemReason
+                    : (previousMeta.problemReason || ''),
+                closeReason: closeIncomplete ? closeReason : (previousMeta.closeReason || ''),
+                deliveries
+            };
+
+            const finalAccumulated = sumReceptionDeliveries(deliveries);
+            const encodedNotes = encodeReceptionNotes(
+                receivedNotes || (outcome === 'problem' ? problemReason : '') || (closeIncomplete ? closeReason : ''),
+                meta
+            );
+
+            const stayOpen = outcome === 'awaiting_more' || outcome === 'problem';
+            const newStatus = stayOpen ? 'Compra Feita' : 'Em Laboratório';
+
+            shoppingList[index].status = newStatus;
+            shoppingList[index].receivedQuantity = finalAccumulated;
+            shoppingList[index].received_quantity = finalAccumulated;
+            shoppingList[index].receivedDate = receivedDate;
+            shoppingList[index].received_date = receivedDate;
+            shoppingList[index].receivedNotes = encodedNotes;
+            shoppingList[index].received_notes = encodedNotes;
+            shoppingList[index].receivedBy = receivedBy;
+            shoppingList[index].received_by = receivedBy;
+            shoppingList[index].receivedAt = receivedAt;
+            shoppingList[index].received_at = receivedAt;
+            shoppingList[index].receptionHistory = meta.deliveries;
+            shoppingList[index].reception_history = meta.deliveries;
+            shoppingList[index].receptionOutcome = meta.outcome;
+            shoppingList[index].reception_outcome = meta.outcome;
+            shoppingList[index].receptionProblemReason = meta.problemReason || null;
+            shoppingList[index].reception_problem_reason = meta.problemReason || null;
+            shoppingList[index].receptionCloseReason = meta.closeReason || null;
+            shoppingList[index].reception_close_reason = meta.closeReason || null;
+
+            const updates = {
+                status: newStatus,
+                received_quantity: finalAccumulated,
                 received_date: receivedDate,
-                received_notes: receivedNotes || null,
+                received_notes: encodedNotes,
                 received_by: receivedBy,
                 received_at: receivedAt,
-                receivedQuantity,
+                receivedQuantity: finalAccumulated,
                 receivedDate,
-                receivedNotes: receivedNotes || null,
+                receivedNotes: encodedNotes,
                 receivedBy,
                 receivedAt,
-                ...labPayload
-            });
+                reception_history: meta.deliveries,
+                receptionHistory: meta.deliveries,
+                reception_outcome: meta.outcome,
+                receptionOutcome: meta.outcome,
+                reception_problem_reason: meta.problemReason || null,
+                receptionProblemReason: meta.problemReason || null,
+                reception_close_reason: meta.closeReason || null,
+                receptionCloseReason: meta.closeReason || null
+            };
+
+            if (!stayOpen) {
+                Object.assign(
+                    updates,
+                    setOrderActorTimestamp(shoppingList[index], 'labBy', 'lab_by', 'labAt', 'lab_at')
+                );
+            }
+
+            const { error } = await updateShoppingListRow(item.id, updates);
 
             if (error) {
                 console.error('Erro ao confirmar receção:', error);
@@ -7023,7 +7389,7 @@
             document.getElementById('receive_notes').value = '';
             clearReceiveOrderSummary();
 
-            if (currentPurchaseTab === 'submitted' || currentPurchaseTab === 'to-receive') {
+            if (!stayOpen && (currentPurchaseTab === 'submitted' || currentPurchaseTab === 'to-receive')) {
                 switchTab('tab-compras-rececionados');
             } else {
                 renderShopping();
@@ -7057,9 +7423,7 @@
                 if (item.status === 'Em Laboratório') badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-300";
                 if (item.status === 'Pedido Cancelado') badgeClass = "bg-rose-100 text-rose-800 border-rose-300";
 
-                const partialBadge = isPartialReception(item)
-                    ? `<span class="text-[9px] px-2 py-0.5 rounded-full font-semibold border border-amber-300 bg-amber-50 text-amber-800">⚠️ Receção Parcial</span>`
-                    : '';
+                const partialBadge = formatReceptionStatusBadge(item);
 
                 return `
                     <div class="bg-white p-3 rounded-xl border border-slate-200">
@@ -7071,7 +7435,7 @@
                             </div>
                         </div>
                         <div class="space-y-2">
-                            <p class="text-sm font-bold text-slate-800">Qtd: <span class="text-violet-600">${item.qty}</span>${getReceivedQuantity(item) ? ` <span class="text-teal-700 font-semibold">· Rec: ${escapeHtml(String(getReceivedQuantity(item)))}</span>` : ''}</p>
+                            <p class="text-sm font-bold text-slate-800">Qtd: <span class="text-violet-600">${item.qty}</span>${getAccumulatedReceivedQuantity(item) > 0 ? ` <span class="text-teal-700 font-semibold">· Rec: ${escapeHtml(formatQuantityWithOrderUnit(item, getAccumulatedReceivedQuantity(item)))}</span>` : ''}</p>
                             <p class="text-xs text-slate-500"><span class="font-bold block">Requerente:</span>${escapeHtml(formatRequesterName(item.requester) || '—')}</p>
                             ${item.purpose ? `<p class="text-xs text-slate-500"><span class="font-bold">Finalidade:</span> ${item.purpose}</p>` : ''}
                             ${getOrderLabs(item).length ? `<p class="text-xs text-slate-500"><span class="font-bold">Laboratório:</span> ${formatOrderLabs(item)}</p>` : ''}
@@ -7518,9 +7882,7 @@
             } else {
                 const rows = pageItems.map(item => {
                     const statusEditable = isOrderStatusEditable(item.status);
-                    const partialReceptionBadge = isPartialReception(item)
-                        ? `<span class="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800">⚠️ Receção Parcial</span>`
-                        : '';
+                    const partialReceptionBadge = formatReceptionStatusBadge(item);
 
                     const statusCell = statusEditable
                         ? `
@@ -9229,392 +9591,3 @@
             }
             renderAlerts();
         }
-
-        async function refreshRealtimeProducts() {
-            inventory = await loadInventoryFromSupabase();
-            productApprovals = await loadProductApprovals();
-            if (getActiveTabId() === 'tab-inventario') {
-                renderInventory();
-            }
-            renderAlerts();
-        }
-
-        async function refreshRealtimeUsers() {
-            if (canManageUsers() && getActiveTabId() === 'tab-utilizadores') {
-                await renderUserManagement();
-            }
-            if (currentUser?.username) {
-                const updated = await findUser(currentUser.username);
-                if (updated) {
-                    applyUserToProfile(updated);
-                    updateSidebarUserInfo();
-                    updateAddProductModalForProfile();
-                    updateAlertPanelForProfile();
-                }
-            }
-        }
-
-        async function refreshRealtimeUsage() {
-            wasteRecords = await loadWasteRecords();
-            if (getActiveTabId() === 'tab-frequencia') {
-                renderUsageStats();
-            }
-        }
-
-        async function runRealtimeGroupRefresh(group) {
-            switch (group) {
-                case 'shopping':
-                    await refreshRealtimeShopping();
-                    break;
-                case 'alerts':
-                    await refreshRealtimeAlerts();
-                    break;
-                case 'budgets':
-                    await refreshRealtimeBudgets();
-                    break;
-                case 'products':
-                    await refreshRealtimeProducts();
-                    break;
-                case 'users':
-                    await refreshRealtimeUsers();
-                    break;
-                case 'usage':
-                    await refreshRealtimeUsage();
-                    break;
-                default:
-                    console.warn(`[Realtime] Grupo desconhecido: ${group}`);
-            }
-        }
-
-        function stopSupabaseRealtime() {
-            realtimeRefreshTimers.forEach(timer => clearTimeout(timer));
-            realtimeRefreshTimers.clear();
-
-            realtimeChannels.forEach(channel => {
-                supabaseClient.removeChannel(channel);
-            });
-            realtimeChannels.clear();
-            realtimeActive = false;
-        }
-
-        function startSupabaseRealtime() {
-            console.log('[Realtime] startSupabaseRealtime() chamado', {
-                alreadyActive: realtimeActive,
-                tables: REALTIME_PHYSICAL_TABLES.map(entry => entry.table)
-            });
-            if (realtimeActive) return;
-
-            const subscribedPhysical = new Set();
-
-            REALTIME_PHYSICAL_TABLES.forEach(({ table, group }) => {
-                if (subscribedPhysical.has(table)) return;
-                subscribedPhysical.add(table);
-
-                const channelName = `qcshop:${table}`;
-                console.log('[Realtime] A criar canal', { channel: channelName, table, group });
-
-                const channel = supabaseClient
-                    .channel(channelName)
-                    .on(
-                        'postgres_changes',
-                        { event: '*', schema: 'public', table },
-                        (payload) => {
-                            console.log('[Realtime] Evento recebido', {
-                                event: payload?.eventType,
-                                table: payload?.table || table,
-                                schema: payload?.schema,
-                                channel: channelName
-                            });
-                            scheduleRealtimeGroupRefresh(group);
-                        }
-                    )
-                    .subscribe((status, err) => {
-                        console.log('[Realtime] Estado do canal', { channel: channelName, table, status });
-                        if (status === 'SUBSCRIBED') {
-                            console.log(`[Realtime] SUBSCRIBED: ${table} (${channelName})`);
-                        } else if (status === 'CHANNEL_ERROR') {
-                            console.warn(`[Realtime] Erro no canal ${table}:`, err);
-                        }
-                    });
-
-                realtimeChannels.set(table, channel);
-            });
-
-            realtimeActive = true;
-            console.log('[Realtime] Subscriptions iniciadas', {
-                channels: Array.from(realtimeChannels.keys())
-            });
-        }
-
-        function getRealtimeSubscribedTables() {
-            return REALTIME_PHYSICAL_TABLES.reduce((acc, entry) => {
-                if (!acc.some(item => item.table === entry.table)) {
-                    acc.push({ table: entry.table, labels: [...entry.labels] });
-                } else {
-                    const existing = acc.find(item => item.table === entry.table);
-                    entry.labels.forEach(label => {
-                        if (label && !existing.labels.includes(label)) existing.labels.push(label);
-                    });
-                }
-                return acc;
-            }, []);
-        }
-
-        async function initializeAppContent() {
-            applyAdminOnlyVisibility();
-            renderOrderLabOptions();
-            inventory = await loadInventoryFromSupabase();
-            renderInventory();
-            budgetData = await loadBudgetData();
-            renderBudgets();
-            shoppingList = await loadShoppingList();
-            renderShopping({ rebuildFilters: true });
-            wasteRecords = await loadWasteRecords();
-            renderUsageStats();
-            productApprovals = await loadProductApprovals();
-            alerts = await loadAlerts();
-            await loadAlertUserStatus();
-            await loadSystemAlertStatus();
-            await migrateSystemAlertDismissalsToSupabase();
-            renderAlerts();
-            updateHeaderActionButtons('tab-inventario');
-            setActiveSidebarButton('tab-inventario');
-            renderAppVersionFooter();
-            startSupabaseRealtime();
-        }
-
-        window.onload = async function() {
-            bindSystemAlertActionButtons();
-
-            document.getElementById('loginPassword')?.addEventListener('keydown', event => {
-                if (event.key === 'Enter') handleLoginSubmit();
-            });
-            document.getElementById('loginUsername')?.addEventListener('keydown', event => {
-                if (event.key === 'Enter') document.getElementById('loginPassword')?.focus();
-            });
-            document.getElementById('loginConfirmPassword')?.addEventListener('keydown', event => {
-                if (event.key === 'Enter') handleLoginSubmit();
-            });
-
-            const sessionUser = await getCurrentUser();
-            if (sessionUser && sessionUser.passwordHash) {
-                applyUserToProfile(sessionUser);
-                hideLoginScreen();
-                updateSidebarUserInfo();
-                updateAddProductModalForProfile();
-                updateAlertPanelForProfile();
-                await initializeAppContent();
-                return;
-            }
-
-            if ((await countUsers()) === 0) {
-                showLoginScreen('setup-admin');
-                return;
-            }
-
-            showLoginScreen('login');
-        };
-
-        function openAddProductToInventoryModal() {
-            const nameEl = document.getElementById('invAdd_product_name');
-            const refEl = document.getElementById('invAdd_reference');
-            const brandEl = document.getElementById('invAdd_brand');
-
-            if (nameEl) nameEl.value = '';
-            if (refEl) refEl.value = '';
-            if (brandEl) brandEl.value = '';
-
-            updateAddProductModalForProfile();
-            openModal('modalAddProduct');
-        }
-
-        async function addProductToInventoryFromModal() {
-            const nameEl = document.getElementById('invAdd_product_name');
-            const refEl = document.getElementById('invAdd_reference');
-            const brandEl = document.getElementById('invAdd_brand');
-
-            const name = (nameEl?.value || '').trim();
-            const reference = (refEl?.value || '').trim();
-            const brand = (brandEl?.value || '').trim();
-
-            if (!name) return alert('Indique o nome do produto.');
-            if (!reference) return alert('Indique a referência do produto.');
-
-            if (inventoryProductExists(name, reference, brand)) {
-                return alert('Esse produto já existe na Base de Dados ou aguarda aprovação.');
-            }
-
-            if (canAddProductsDirectly()) {
-                const ok = await addInventoryProduct({ name, reference, brand });
-                if (!ok) return alert('Não foi possível adicionar o produto.');
-
-                closeModal('modalAddProduct');
-                await refreshInventoryFromSupabase();
-                return;
-            }
-
-            const requestedBy = getAuthenticatedUsername();
-            if (!requestedBy) {
-                return alert('Sessão inválida. Inicie sessão novamente para submeter o produto.');
-            }
-
-            const submitted = await submitProductForApproval({ name, reference, brand });
-            if (!submitted) return;
-
-            closeModal('modalAddProduct');
-            alert('Pedido submetido para aprovação. Um responsável irá rever nos Alertas do Sistema.');
-        }
-
-    </script>
-<script src="app-info.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="inventory.js"></script>
-
-<div id="pwaUpdateToast" class="hidden fixed bottom-16 right-4 z-[80] w-[min(100vw-2rem,22rem)] rounded-2xl border border-violet-200 bg-white shadow-2xl p-4">
-    <div class="flex items-start gap-3">
-        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 border border-violet-100">
-            <i class="fa-solid fa-arrows-rotate text-violet-600 text-sm"></i>
-        </div>
-        <div class="min-w-0 flex-1">
-            <p class="text-sm font-semibold text-slate-900">Nova versão disponível</p>
-            <p id="pwaUpdateVersion" class="hidden mt-1 text-xs font-semibold text-violet-700"></p>
-            <p class="mt-1 text-xs text-slate-500">Foi publicada uma nova versão da QCShop.</p>
-            <div class="mt-3 flex gap-2">
-                <button type="button" onclick="applyPwaUpdateNow()" class="flex-1 rounded-lg bg-[#8B7EC8] px-3 py-2 text-xs font-semibold text-white hover:bg-[#7A6BB0] transition">Atualizar agora</button>
-                <button type="button" onclick="dismissPwaUpdateToast()" class="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">Mais tarde</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    let waitingServiceWorker = null;
-    let pwaUpdateRequested = false;
-    let pendingAppVersion = null;
-    let pwaServiceWorkerRegistration = null;
-
-    function updatePwaToastVersionLabel(version) {
-        const el = document.getElementById('pwaUpdateVersion');
-        if (!el) return;
-        if (version) {
-            el.textContent = `Versão ${version} disponível`;
-            el.classList.remove('hidden');
-        } else {
-            el.textContent = '';
-            el.classList.add('hidden');
-        }
-    }
-
-    function showPwaUpdateToast() {
-        document.getElementById('pwaUpdateToast')?.classList.remove('hidden');
-    }
-
-    function dismissPwaUpdateToast() {
-        document.getElementById('pwaUpdateToast')?.classList.add('hidden');
-    }
-
-    function applyPwaUpdateNow() {
-        if (!waitingServiceWorker) return;
-        pwaUpdateRequested = true;
-        dismissPwaUpdateToast();
-        waitingServiceWorker.postMessage({ type: 'SKIP_WAITING' });
-    }
-
-    async function fetchRemoteAppVersion() {
-        try {
-            const response = await fetch(`./app-info.js?ts=${Date.now()}`, { cache: 'no-store' });
-            if (!response.ok) return null;
-            const text = await response.text();
-            const match = text.match(/version:\s*['"]([^'"]+)['"]/);
-            return match ? match[1] : null;
-        } catch (error) {
-            return null;
-        }
-    }
-
-    async function notifyPwaUpdateAvailable(worker) {
-        waitingServiceWorker = worker;
-        pendingAppVersion = null;
-        updatePwaToastVersionLabel(null);
-
-        if (worker) {
-            worker.postMessage({ type: 'GET_APP_INFO' });
-        }
-
-        const remoteVersion = await fetchRemoteAppVersion();
-        const currentVersion = (window.QCSHOP_APP_INFO || {}).version;
-        if (remoteVersion && remoteVersion !== currentVersion) {
-            pendingAppVersion = remoteVersion;
-            updatePwaToastVersionLabel(remoteVersion);
-        }
-
-        showPwaUpdateToast();
-    }
-
-    function trackWaitingServiceWorker(registration) {
-        if (registration.waiting && navigator.serviceWorker.controller) {
-            notifyPwaUpdateAvailable(registration.waiting);
-        }
-
-        registration.addEventListener('updatefound', function () {
-            const newWorker = registration.installing;
-            if (!newWorker) return;
-
-            newWorker.addEventListener('statechange', function () {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    notifyPwaUpdateAvailable(newWorker);
-                }
-            });
-        });
-    }
-
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.addEventListener('message', function (event) {
-            if (event.data?.type !== 'APP_INFO' || !event.data.version) return;
-            const currentVersion = (window.QCSHOP_APP_INFO || {}).version;
-            if (event.data.version !== currentVersion) {
-                pendingAppVersion = event.data.version;
-                updatePwaToastVersionLabel(event.data.version);
-            }
-        });
-
-        navigator.serviceWorker.addEventListener('controllerchange', function () {
-            if (!pwaUpdateRequested) return;
-            window.location.reload();
-        });
-
-        window.addEventListener('load', function () {
-            if (typeof renderAppVersionFooter === 'function') {
-                renderAppVersionFooter();
-            }
-
-            navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' })
-                .then(function (registration) {
-                    pwaServiceWorkerRegistration = registration;
-                    trackWaitingServiceWorker(registration);
-                    registration.update();
-                })
-                .catch(function (err) {
-                    console.warn('Service Worker não registado:', err);
-                });
-        });
-
-        document.addEventListener('visibilitychange', function () {
-            if (document.visibilityState === 'visible') {
-                pwaServiceWorkerRegistration?.update();
-            }
-        });
-
-        window.addEventListener('focus', function () {
-            pwaServiceWorkerRegistration?.update();
-        });
-
-        setInterval(function () {
-            pwaServiceWorkerRegistration?.update();
-        }, 60 * 60 * 1000);
-    }
-</script>
-</body>
-</html>
-</user_query>
