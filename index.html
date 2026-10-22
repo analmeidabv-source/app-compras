@@ -236,9 +236,10 @@
                     <i class="fa-solid fa-wallet w-4 text-slate-500"></i>
                     Budget Centro Custos
                 </button>
-                <button onclick="togglePanel('alertPanel')" class="sidebar-action-btn alert w-full rounded-lg border border-violet-200 px-3 py-2.5 flex items-center gap-3 text-sm">
+                <button id="sidebarAlertsBtn" type="button" onclick="togglePanel('alertPanel')" class="sidebar-action-btn alert relative w-full rounded-lg border border-violet-200 px-3 py-2.5 flex items-center gap-3 text-sm">
                     <i class="fa-solid fa-bell w-4 text-slate-500"></i>
-                    Alertas do Sistema
+                    <span class="flex-1 text-left">Alertas do Sistema</span>
+                    <span id="sidebarAlertsBadge" class="hidden ml-auto inline-flex min-w-[1.25rem] h-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white tabular-nums" aria-hidden="true">0</span>
                 </button>
             </div>
 
@@ -8775,10 +8776,37 @@
             renderAlerts();
         }
 
-        function renderAlerts() {
-            const container = document.getElementById('alertContainer');
-            if (!container) return;
+        function updateSidebarAlertsBadge(counts) {
+            const badge = document.getElementById('sidebarAlertsBadge');
+            const button = document.getElementById('sidebarAlertsBtn');
+            if (!badge) return;
 
+            const critical = Math.max(0, Number(counts?.critical) || 0);
+            const warning = Math.max(0, Number(counts?.warning) || 0);
+            const total = critical + warning;
+
+            if (total <= 0) {
+                badge.classList.add('hidden');
+                badge.textContent = '0';
+                badge.setAttribute('aria-hidden', 'true');
+                if (button) button.removeAttribute('aria-label');
+                return;
+            }
+
+            badge.classList.remove('hidden');
+            badge.textContent = total > 99 ? '99+' : String(total);
+            badge.setAttribute('aria-hidden', 'false');
+            badge.classList.toggle('bg-rose-600', critical > 0);
+            badge.classList.toggle('bg-amber-500', critical === 0);
+            if (button) {
+                button.setAttribute(
+                    'aria-label',
+                    `Alertas do Sistema, ${total} pendente${total === 1 ? '' : 's'}`
+                );
+            }
+        }
+
+        function renderAlerts() {
             processScheduledAlerts();
 
             const today = getTodayDateString();
@@ -8794,6 +8822,25 @@
             const staleToReceiveOrders = filterActiveSystemAlerts(getStaleToReceiveOrderAlerts(), getToReceiveOrderAlertKey);
             const staleInactiveProducts = filterActiveSystemAlerts(getStaleInactiveProductAlerts(), getInactiveProductAlertKey);
             const doneSystemAlerts = getDoneSystemAlerts();
+
+            // Pending = still needs action. Opening the panel does not clear these.
+            let criticalCount = 0;
+            let warningCount = 0;
+            activeAlerts.forEach(alert => {
+                if (alert.type === 'urgent') criticalCount += 1;
+                else warningCount += 1;
+            });
+            warningCount += pendingProductApprovals.length;
+            budgetAlerts.forEach(({ item: alert }) => {
+                if (alert?.severity === 'critical') criticalCount += 1;
+                else warningCount += 1;
+            });
+            warningCount += stalePendingOrders.length + staleQuoteOrders.length;
+            criticalCount += staleToReceiveOrders.length + staleInactiveProducts.length;
+            updateSidebarAlertsBadge({ critical: criticalCount, warning: warningCount });
+
+            const container = document.getElementById('alertContainer');
+            if (!container) return;
 
             const renderProductApprovalCard = (request) => {
                 const canReview = canApproveProducts();
