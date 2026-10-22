@@ -3662,8 +3662,9 @@
             return item?.receivedQuantity ?? item?.received_quantity ?? '';
         }
 
-        const RECEPTION_META_PREFIX = '<!--kabi-reception-meta:';
-        const RECEPTION_META_SUFFIX = '-->';
+        // Avoid literal HTML comment tokens inside <script> (can break HTML parsing of the whole script).
+        const RECEPTION_META_PREFIX = '[' + '[kabi-reception-meta:';
+        const RECEPTION_META_SUFFIX = ']' + ']';
 
         function createEmptyReceptionMeta() {
             return { outcome: null, problemReason: '', closeReason: '', deliveries: [] };
@@ -9591,3 +9592,391 @@
             }
             renderAlerts();
         }
+
+        async function refreshRealtimeProducts() {
+            inventory = await loadInventoryFromSupabase();
+            productApprovals = await loadProductApprovals();
+            if (getActiveTabId() === 'tab-inventario') {
+                renderInventory();
+            }
+            renderAlerts();
+        }
+
+        async function refreshRealtimeUsers() {
+            if (canManageUsers() && getActiveTabId() === 'tab-utilizadores') {
+                await renderUserManagement();
+            }
+            if (currentUser?.username) {
+                const updated = await findUser(currentUser.username);
+                if (updated) {
+                    applyUserToProfile(updated);
+                    updateSidebarUserInfo();
+                    updateAddProductModalForProfile();
+                    updateAlertPanelForProfile();
+                }
+            }
+        }
+
+        async function refreshRealtimeUsage() {
+            wasteRecords = await loadWasteRecords();
+            if (getActiveTabId() === 'tab-frequencia') {
+                renderUsageStats();
+            }
+        }
+
+        async function runRealtimeGroupRefresh(group) {
+            switch (group) {
+                case 'shopping':
+                    await refreshRealtimeShopping();
+                    break;
+                case 'alerts':
+                    await refreshRealtimeAlerts();
+                    break;
+                case 'budgets':
+                    await refreshRealtimeBudgets();
+                    break;
+                case 'products':
+                    await refreshRealtimeProducts();
+                    break;
+                case 'users':
+                    await refreshRealtimeUsers();
+                    break;
+                case 'usage':
+                    await refreshRealtimeUsage();
+                    break;
+                default:
+                    console.warn(`[Realtime] Grupo desconhecido: ${group}`);
+            }
+        }
+
+        function stopSupabaseRealtime() {
+            realtimeRefreshTimers.forEach(timer => clearTimeout(timer));
+            realtimeRefreshTimers.clear();
+
+            realtimeChannels.forEach(channel => {
+                supabaseClient.removeChannel(channel);
+            });
+            realtimeChannels.clear();
+            realtimeActive = false;
+        }
+
+        function startSupabaseRealtime() {
+            console.log('[Realtime] startSupabaseRealtime() chamado', {
+                alreadyActive: realtimeActive,
+                tables: REALTIME_PHYSICAL_TABLES.map(entry => entry.table)
+            });
+            if (realtimeActive) return;
+
+            const subscribedPhysical = new Set();
+
+            REALTIME_PHYSICAL_TABLES.forEach(({ table, group }) => {
+                if (subscribedPhysical.has(table)) return;
+                subscribedPhysical.add(table);
+
+                const channelName = `qcshop:${table}`;
+                console.log('[Realtime] A criar canal', { channel: channelName, table, group });
+
+                const channel = supabaseClient
+                    .channel(channelName)
+                    .on(
+                        'postgres_changes',
+                        { event: '*', schema: 'public', table },
+                        (payload) => {
+                            console.log('[Realtime] Evento recebido', {
+                                event: payload?.eventType,
+                                table: payload?.table || table,
+                                schema: payload?.schema,
+                                channel: channelName
+                            });
+                            scheduleRealtimeGroupRefresh(group);
+                        }
+                    )
+                    .subscribe((status, err) => {
+                        console.log('[Realtime] Estado do canal', { channel: channelName, table, status });
+                        if (status === 'SUBSCRIBED') {
+                            console.log(`[Realtime] SUBSCRIBED: ${table} (${channelName})`);
+                        } else if (status === 'CHANNEL_ERROR') {
+                            console.warn(`[Realtime] Erro no canal ${table}:`, err);
+                        }
+                    });
+
+                realtimeChannels.set(table, channel);
+            });
+
+            realtimeActive = true;
+            console.log('[Realtime] Subscriptions iniciadas', {
+                channels: Array.from(realtimeChannels.keys())
+            });
+        }
+
+        function getRealtimeSubscribedTables() {
+            return REALTIME_PHYSICAL_TABLES.reduce((acc, entry) => {
+                if (!acc.some(item => item.table === entry.table)) {
+                    acc.push({ table: entry.table, labels: [...entry.labels] });
+                } else {
+                    const existing = acc.find(item => item.table === entry.table);
+                    entry.labels.forEach(label => {
+                        if (label && !existing.labels.includes(label)) existing.labels.push(label);
+                    });
+                }
+                return acc;
+            }, []);
+        }
+
+        async function initializeAppContent() {
+            applyAdminOnlyVisibility();
+            renderOrderLabOptions();
+            inventory = await loadInventoryFromSupabase();
+            renderInventory();
+            budgetData = await loadBudgetData();
+            renderBudgets();
+            shoppingList = await loadShoppingList();
+            renderShopping({ rebuildFilters: true });
+            wasteRecords = await loadWasteRecords();
+            renderUsageStats();
+            productApprovals = await loadProductApprovals();
+            alerts = await loadAlerts();
+            await loadAlertUserStatus();
+            await loadSystemAlertStatus();
+            await migrateSystemAlertDismissalsToSupabase();
+            renderAlerts();
+            updateHeaderActionButtons('tab-inventario');
+            setActiveSidebarButton('tab-inventario');
+            renderAppVersionFooter();
+            startSupabaseRealtime();
+        }
+
+        window.onload = async function() {
+            bindSystemAlertActionButtons();
+
+            document.getElementById('loginPassword')?.addEventListener('keydown', event => {
+                if (event.key === 'Enter') handleLoginSubmit();
+            });
+            document.getElementById('loginUsername')?.addEventListener('keydown', event => {
+                if (event.key === 'Enter') document.getElementById('loginPassword')?.focus();
+            });
+            document.getElementById('loginConfirmPassword')?.addEventListener('keydown', event => {
+                if (event.key === 'Enter') handleLoginSubmit();
+            });
+
+            const sessionUser = await getCurrentUser();
+            if (sessionUser && sessionUser.passwordHash) {
+                applyUserToProfile(sessionUser);
+                hideLoginScreen();
+                updateSidebarUserInfo();
+                updateAddProductModalForProfile();
+                updateAlertPanelForProfile();
+                await initializeAppContent();
+                return;
+            }
+
+            if ((await countUsers()) === 0) {
+                showLoginScreen('setup-admin');
+                return;
+            }
+
+            showLoginScreen('login');
+        };
+
+        function openAddProductToInventoryModal() {
+            const nameEl = document.getElementById('invAdd_product_name');
+            const refEl = document.getElementById('invAdd_reference');
+            const brandEl = document.getElementById('invAdd_brand');
+
+            if (nameEl) nameEl.value = '';
+            if (refEl) refEl.value = '';
+            if (brandEl) brandEl.value = '';
+
+            updateAddProductModalForProfile();
+            openModal('modalAddProduct');
+        }
+
+        async function addProductToInventoryFromModal() {
+            const nameEl = document.getElementById('invAdd_product_name');
+            const refEl = document.getElementById('invAdd_reference');
+            const brandEl = document.getElementById('invAdd_brand');
+
+            const name = (nameEl?.value || '').trim();
+            const reference = (refEl?.value || '').trim();
+            const brand = (brandEl?.value || '').trim();
+
+            if (!name) return alert('Indique o nome do produto.');
+            if (!reference) return alert('Indique a referência do produto.');
+
+            if (inventoryProductExists(name, reference, brand)) {
+                return alert('Esse produto já existe na Base de Dados ou aguarda aprovação.');
+            }
+
+            if (canAddProductsDirectly()) {
+                const ok = await addInventoryProduct({ name, reference, brand });
+                if (!ok) return alert('Não foi possível adicionar o produto.');
+
+                closeModal('modalAddProduct');
+                await refreshInventoryFromSupabase();
+                return;
+            }
+
+            const requestedBy = getAuthenticatedUsername();
+            if (!requestedBy) {
+                return alert('Sessão inválida. Inicie sessão novamente para submeter o produto.');
+            }
+
+            const submitted = await submitProductForApproval({ name, reference, brand });
+            if (!submitted) return;
+
+            closeModal('modalAddProduct');
+            alert('Pedido submetido para aprovação. Um responsável irá rever nos Alertas do Sistema.');
+        }
+
+    </script>
+<script src="app-info.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script src="inventory.js"></script>
+
+<div id="pwaUpdateToast" class="hidden fixed bottom-16 right-4 z-[80] w-[min(100vw-2rem,22rem)] rounded-2xl border border-violet-200 bg-white shadow-2xl p-4">
+    <div class="flex items-start gap-3">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 border border-violet-100">
+            <i class="fa-solid fa-arrows-rotate text-violet-600 text-sm"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-slate-900">Nova versão disponível</p>
+            <p id="pwaUpdateVersion" class="hidden mt-1 text-xs font-semibold text-violet-700"></p>
+            <p class="mt-1 text-xs text-slate-500">Foi publicada uma nova versão da QCShop.</p>
+            <div class="mt-3 flex gap-2">
+                <button type="button" onclick="applyPwaUpdateNow()" class="flex-1 rounded-lg bg-[#8B7EC8] px-3 py-2 text-xs font-semibold text-white hover:bg-[#7A6BB0] transition">Atualizar agora</button>
+                <button type="button" onclick="dismissPwaUpdateToast()" class="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">Mais tarde</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let waitingServiceWorker = null;
+    let pwaUpdateRequested = false;
+    let pendingAppVersion = null;
+    let pwaServiceWorkerRegistration = null;
+
+    function updatePwaToastVersionLabel(version) {
+        const el = document.getElementById('pwaUpdateVersion');
+        if (!el) return;
+        if (version) {
+            el.textContent = `Versão ${version} disponível`;
+            el.classList.remove('hidden');
+        } else {
+            el.textContent = '';
+            el.classList.add('hidden');
+        }
+    }
+
+    function showPwaUpdateToast() {
+        document.getElementById('pwaUpdateToast')?.classList.remove('hidden');
+    }
+
+    function dismissPwaUpdateToast() {
+        document.getElementById('pwaUpdateToast')?.classList.add('hidden');
+    }
+
+    function applyPwaUpdateNow() {
+        if (!waitingServiceWorker) return;
+        pwaUpdateRequested = true;
+        dismissPwaUpdateToast();
+        waitingServiceWorker.postMessage({ type: 'SKIP_WAITING' });
+    }
+
+    async function fetchRemoteAppVersion() {
+        try {
+            const response = await fetch(`./app-info.js?ts=${Date.now()}`, { cache: 'no-store' });
+            if (!response.ok) return null;
+            const text = await response.text();
+            const match = text.match(/version:\s*['"]([^'"]+)['"]/);
+            return match ? match[1] : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async function notifyPwaUpdateAvailable(worker) {
+        waitingServiceWorker = worker;
+        pendingAppVersion = null;
+        updatePwaToastVersionLabel(null);
+
+        if (worker) {
+            worker.postMessage({ type: 'GET_APP_INFO' });
+        }
+
+        const remoteVersion = await fetchRemoteAppVersion();
+        const currentVersion = (window.QCSHOP_APP_INFO || {}).version;
+        if (remoteVersion && remoteVersion !== currentVersion) {
+            pendingAppVersion = remoteVersion;
+            updatePwaToastVersionLabel(remoteVersion);
+        }
+
+        showPwaUpdateToast();
+    }
+
+    function trackWaitingServiceWorker(registration) {
+        if (registration.waiting && navigator.serviceWorker.controller) {
+            notifyPwaUpdateAvailable(registration.waiting);
+        }
+
+        registration.addEventListener('updatefound', function () {
+            const newWorker = registration.installing;
+            if (!newWorker) return;
+
+            newWorker.addEventListener('statechange', function () {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    notifyPwaUpdateAvailable(newWorker);
+                }
+            });
+        });
+    }
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', function (event) {
+            if (event.data?.type !== 'APP_INFO' || !event.data.version) return;
+            const currentVersion = (window.QCSHOP_APP_INFO || {}).version;
+            if (event.data.version !== currentVersion) {
+                pendingAppVersion = event.data.version;
+                updatePwaToastVersionLabel(event.data.version);
+            }
+        });
+
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+            if (!pwaUpdateRequested) return;
+            window.location.reload();
+        });
+
+        window.addEventListener('load', function () {
+            if (typeof renderAppVersionFooter === 'function') {
+                renderAppVersionFooter();
+            }
+
+            navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' })
+                .then(function (registration) {
+                    pwaServiceWorkerRegistration = registration;
+                    trackWaitingServiceWorker(registration);
+                    registration.update();
+                })
+                .catch(function (err) {
+                    console.warn('Service Worker não registado:', err);
+                });
+        });
+
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') {
+                pwaServiceWorkerRegistration?.update();
+            }
+        });
+
+        window.addEventListener('focus', function () {
+            pwaServiceWorkerRegistration?.update();
+        });
+
+        setInterval(function () {
+            pwaServiceWorkerRegistration?.update();
+        }, 60 * 60 * 1000);
+    }
+</script>
+</body>
+</html>
