@@ -3600,6 +3600,7 @@
             reference: []
         };
         let purchaseFilterDebounceTimer = null;
+        let purchaseFilterOptionsQuery = '';
         let purchasePage = 1;
         let purchasePageSize = 50;
         const purchasePageSizeOptions = [25, 50, 100];
@@ -7523,42 +7524,7 @@
             });
         }
 
-        function renderPurchaseFilterCheckboxGroup(type, label, options, emptyMessage) {
-            const itemsHtml = options.length
-                ? options.map(value => {
-                    const isActive = selectedPurchaseFilters[type].includes(value);
-                    const displayValue = type === 'analyst' ? (formatRequesterName(value) || value) : value;
-                    return `
-                        <label class="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white cursor-pointer border-b border-slate-100 last:border-b-0">
-                            <input type="checkbox" ${isActive ? 'checked' : ''} data-filter-type="${type}" data-filter-value="${escapeAttr(value)}" onchange="handlePurchaseFilterChange(this)" class="h-3.5 w-3.5 rounded border-slate-300 text-amber-600 focus:ring-amber-300">
-                            <span class="text-xs font-medium text-slate-700">${escapeHtml(displayValue)}</span>
-                        </label>
-                    `;
-                }).join('')
-                : `<p class="px-3 py-2 text-[11px] text-slate-400 italic">${emptyMessage}</p>`;
-
-            return `
-                <div>
-                    <p class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">${label}</p>
-                    <div>${itemsHtml}</div>
-                </div>
-            `;
-        }
-
-        function renderPurchaseFilters() {
-            prunePurchaseFilters();
-            const dynamicOptions = getPurchaseFilterOptions();
-
-            const panelHtml = `
-                <div class="divide-y divide-slate-200">
-                    ${renderPurchaseFilterCheckboxGroup('lab', 'Laboratório / área', purchaseLabOptions, 'Sem opções')}
-                    ${renderPurchaseFilterCheckboxGroup('cart', 'Nº carrinho', dynamicOptions.cart, 'Sem carrinhos nesta categoria')}
-                    ${renderPurchaseFilterCheckboxGroup('analyst', 'Requerente', dynamicOptions.analyst, 'Sem requerentes nesta categoria')}
-                    ${renderPurchaseFilterCheckboxGroup('brand', 'Marca', dynamicOptions.brand, 'Sem marcas nesta categoria')}
-                    ${renderPurchaseFilterCheckboxGroup('reference', 'Referência', dynamicOptions.reference, 'Sem referências nesta categoria')}
-                </div>
-            `;
-
+        function getActivePurchaseFilterPanelEl() {
             const panelMap = {
                 overview: 'purchaseFilterPanel',
                 submitted: 'purchaseFilterPanelSubmitted',
@@ -7566,8 +7532,106 @@
                 received: 'purchaseFilterPanelReceived',
                 cancelled: 'purchaseFilterPanelCancelled'
             };
-            const panel = document.getElementById(panelMap[currentPurchaseTab] || panelMap.overview);
-            if (panel) panel.innerHTML = panelHtml;
+            return document.getElementById(panelMap[currentPurchaseTab] || panelMap.overview);
+        }
+
+        function renderPurchaseFilterCheckboxGroup(type, label, options, emptyMessage) {
+            const itemsHtml = options.length
+                ? options.map(value => {
+                    const isActive = selectedPurchaseFilters[type].includes(value);
+                    const displayValue = type === 'analyst' ? (formatRequesterName(value) || value) : value;
+                    return `
+                        <label data-filter-option data-filter-option-text="${escapeAttr(String(displayValue || ''))}" class="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white cursor-pointer border-b border-slate-100 last:border-b-0">
+                            <input type="checkbox" ${isActive ? 'checked' : ''} data-filter-type="${type}" data-filter-value="${escapeAttr(value)}" onchange="handlePurchaseFilterChange(this)" class="h-3.5 w-3.5 rounded border-slate-300 text-amber-600 focus:ring-amber-300">
+                            <span class="text-xs font-medium text-slate-700">${escapeHtml(displayValue)}</span>
+                        </label>
+                    `;
+                }).join('')
+                : `<p data-filter-empty-msg class="px-3 py-2 text-[11px] text-slate-400 italic">${emptyMessage}</p>`;
+
+            return `
+                <div data-filter-group data-filter-group-label="${escapeAttr(label)}">
+                    <p class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">${label}</p>
+                    <div>${itemsHtml}</div>
+                </div>
+            `;
+        }
+
+        function applyPurchaseFilterOptionsSearch(rawQuery) {
+            purchaseFilterOptionsQuery = String(rawQuery || '');
+            const query = purchaseFilterOptionsQuery.trim().toLowerCase();
+            const panel = getActivePurchaseFilterPanelEl();
+            if (!panel) return;
+
+            const clearBtn = panel.querySelector('[data-filter-options-clear]');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !query);
+
+            let anyVisible = false;
+            panel.querySelectorAll('[data-filter-group]').forEach(group => {
+                const groupLabel = String(group.dataset.filterGroupLabel || '').toLowerCase();
+                const groupMatches = Boolean(query) && groupLabel.includes(query);
+                let visibleOptions = 0;
+
+                group.querySelectorAll('[data-filter-option]').forEach(option => {
+                    const optionText = String(option.dataset.filterOptionText || option.textContent || '').toLowerCase();
+                    const show = !query || groupMatches || optionText.includes(query);
+                    option.classList.toggle('hidden', !show);
+                    if (show) visibleOptions += 1;
+                });
+
+                const emptyMsg = group.querySelector('[data-filter-empty-msg]');
+                if (emptyMsg) {
+                    emptyMsg.classList.toggle('hidden', Boolean(query) && !groupMatches);
+                }
+
+                const showGroup = !query || visibleOptions > 0 || (groupMatches && Boolean(emptyMsg));
+                group.classList.toggle('hidden', !showGroup);
+                if (showGroup) anyVisible = true;
+            });
+
+            const emptyState = panel.querySelector('[data-filter-search-empty]');
+            if (emptyState) emptyState.classList.toggle('hidden', !query || anyVisible);
+        }
+
+        function clearPurchaseFilterOptionsSearch() {
+            purchaseFilterOptionsQuery = '';
+            const panel = getActivePurchaseFilterPanelEl();
+            const input = panel?.querySelector('[data-filter-options-search]');
+            if (input) input.value = '';
+            applyPurchaseFilterOptionsSearch('');
+        }
+
+        function renderPurchaseFilters() {
+            prunePurchaseFilters();
+            const dynamicOptions = getPurchaseFilterOptions();
+            const searchValue = escapeAttr(purchaseFilterOptionsQuery);
+            const clearHidden = String(purchaseFilterOptionsQuery || '').trim() ? '' : 'hidden';
+
+            const panelHtml = `
+                <div class="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400" aria-hidden="true"></i>
+                        <input type="text" data-filter-options-search value="${searchValue}" oninput="applyPurchaseFilterOptionsSearch(this.value)" placeholder="Pesquisar filtros..." class="w-full rounded-lg border border-slate-300 bg-white py-1.5 pl-8 pr-8 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-amber-300" autocomplete="off">
+                        <button type="button" data-filter-options-clear onclick="clearPurchaseFilterOptionsSearch()" class="${clearHidden} absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600" title="Limpar pesquisa" aria-label="Limpar pesquisa dos filtros">
+                            <i class="fa-solid fa-xmark text-[11px]" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="divide-y divide-slate-200" data-filter-groups>
+                    ${renderPurchaseFilterCheckboxGroup('lab', 'Laboratório / área', purchaseLabOptions, 'Sem opções')}
+                    ${renderPurchaseFilterCheckboxGroup('cart', 'Nº carrinho', dynamicOptions.cart, 'Sem carrinhos nesta categoria')}
+                    ${renderPurchaseFilterCheckboxGroup('analyst', 'Requerente', dynamicOptions.analyst, 'Sem requerentes nesta categoria')}
+                    ${renderPurchaseFilterCheckboxGroup('brand', 'Marca', dynamicOptions.brand, 'Sem marcas nesta categoria')}
+                    ${renderPurchaseFilterCheckboxGroup('reference', 'Referência', dynamicOptions.reference, 'Sem referências nesta categoria')}
+                </div>
+                <p data-filter-search-empty class="hidden px-3 py-4 text-center text-[11px] italic text-slate-400">Nenhum filtro correspondente.</p>
+            `;
+
+            const panel = getActivePurchaseFilterPanelEl();
+            if (panel) {
+                panel.innerHTML = panelHtml;
+                applyPurchaseFilterOptionsSearch(purchaseFilterOptionsQuery);
+            }
 
             updatePurchaseFilterCount();
         }
@@ -7605,6 +7669,7 @@
 
         function clearPurchaseFilters() {
             selectedPurchaseFilters = createEmptyPurchaseFilters();
+            purchaseFilterOptionsQuery = '';
 
             const controls = getActivePurchaseFilters();
             if (controls.search) controls.search.value = '';
