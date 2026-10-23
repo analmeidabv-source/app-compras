@@ -971,16 +971,12 @@
                     <div>
                         <h3 class="text-sm font-semibold text-slate-900">Budget Centro de Custos</h3>
                         <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                            <span>Total anual: €</span>
-                            <input
+                            <span>Total anual (<span id="budgetAnnualYearLabel">—</span>): €</span>
+                            <span
                                 id="budgetAnnualTotalInput"
-                                type="text"
-                                inputmode="numeric"
-                                onfocus="this.select()"
-                                oninput="updateAnnualBudgetTotal(this.value)"
-                                class="min-w-[4.5rem] max-w-[7rem] bg-transparent border-0 border-b border-transparent p-0 text-xs text-slate-500 outline-none transition focus:border-violet-300 focus:text-slate-700"
+                                class="min-w-[4.5rem] tabular-nums text-xs text-slate-600"
                                 aria-label="Budget total anual"
-                            >
+                            >0</span>
                         </p>
                         <button
                             type="button"
@@ -997,10 +993,17 @@
 
             <div class="border-b border-slate-100 bg-white px-4 py-3 space-y-3">
                 <div id="budgetCategoryTabs" class="grid grid-cols-3 gap-1.5"></div>
-                <div>
-                    <label for="budgetMonthSelect" class="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Mês</label>
-                    <select id="budgetMonthSelect" onchange="selectBudgetMonth(Number(this.value))" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-violet-200 cursor-pointer">
-                    </select>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="budgetYearSelect" class="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Ano</label>
+                        <select id="budgetYearSelect" onchange="selectBudgetYear(Number(this.value))" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-violet-200 cursor-pointer">
+                        </select>
+                    </div>
+                    <div>
+                        <label for="budgetMonthSelect" class="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Mês</label>
+                        <select id="budgetMonthSelect" onchange="selectBudgetMonth(Number(this.value))" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-violet-200 cursor-pointer">
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -3474,8 +3477,76 @@
             }));
         }
 
+        /** Persistência multi-ano sem nova tabela: month = "YYYY|Janeiro". Legado: "Janeiro". */
+        const BUDGET_MONTH_YEAR_SEP = '|';
+        let budgetDataByYear = {};
+        let activeBudgetYear = new Date().getFullYear();
+        let budgetData = [];
+        let activeBudgetMonth = 0;
+        let activeBudgetCategory = "Padrões";
+
+        function getDefaultBudgetYear() {
+            return new Date().getFullYear();
+        }
+
+        function encodeBudgetMonthKey(year, monthName) {
+            return `${Number(year)}${BUDGET_MONTH_YEAR_SEP}${monthName}`;
+        }
+
+        function parseBudgetMonthKey(rawMonth) {
+            const value = String(rawMonth || '');
+            const sep = value.indexOf(BUDGET_MONTH_YEAR_SEP);
+            if (sep > 0) {
+                const yearPart = Number(value.slice(0, sep));
+                const monthPart = value.slice(sep + 1);
+                if (Number.isFinite(yearPart) && monthNames.includes(monthPart)) {
+                    return { year: yearPart, month: monthPart, prefixed: true };
+                }
+            }
+            if (monthNames.includes(value)) {
+                return { year: null, month: value, prefixed: false };
+            }
+            return null;
+        }
+
+        function ensureBudgetYearData(year, store = budgetDataByYear) {
+            const y = Number(year);
+            if (!Number.isFinite(y)) return createDefaultBudgetData();
+            if (!store[y]) store[y] = createDefaultBudgetData();
+            return store[y];
+        }
+
+        function syncActiveBudgetData() {
+            budgetData = ensureBudgetYearData(activeBudgetYear);
+            return budgetData;
+        }
+
+        function getAvailableBudgetYears() {
+            const years = new Set(Object.keys(budgetDataByYear).map(Number).filter(Number.isFinite));
+            const cy = getDefaultBudgetYear();
+            years.add(cy);
+            years.add(cy - 1);
+            years.add(cy + 1);
+            years.add(Number(activeBudgetYear) || cy);
+            return Array.from(years).sort((a, b) => b - a);
+        }
+
+        function applyBudgetRowToStore(store, year, monthName, categoryLabel, costCenter, total, spent) {
+            const yearData = ensureBudgetYearData(year, store);
+            const monthData = yearData.find(m => m.month === monthName);
+            if (!monthData) return;
+            const category = monthData.categories.find(c => c.label === categoryLabel);
+            if (!category) return;
+            const item = category.items.find(i => i.label === costCenter);
+            if (!item) return;
+            item.total = Number(total) || 0;
+            item.spent = Number(spent) || 0;
+        }
+
         async function loadBudgetData() {
-            const budget = createDefaultBudgetData();
+            const store = {};
+            const fallbackYear = getDefaultBudgetYear();
+            ensureBudgetYearData(fallbackYear, store);
 
             const { data, error } = await supabaseClient
                 .from("budgets")
@@ -3483,38 +3554,68 @@
 
             if (error) {
                 console.error("Erro ao carregar budgets:", error);
-                return budget;
+                budgetDataByYear = store;
+                if (!Number.isFinite(Number(activeBudgetYear))) activeBudgetYear = fallbackYear;
+                syncActiveBudgetData();
+                return budgetData;
             }
 
+            const prefixed = [];
+            const legacy = [];
             (data || []).forEach(row => {
-                const monthData = budget.find(m => m.month === row.month);
-                if (!monthData) return;
-
-                const category = monthData.categories.find(c => c.label === row.category);
-                if (!category) return;
-
-                const item = category.items.find(i => i.label === row.cost_center);
-                if (!item) return;
-
-                item.total = Number(row.total) || 0;
-                item.spent = Number(row.spent) || 0;
+                const parsed = parseBudgetMonthKey(row.month);
+                if (!parsed) return;
+                const entry = {
+                    year: parsed.prefixed ? parsed.year : fallbackYear,
+                    monthName: parsed.month,
+                    category: row.category,
+                    cost_center: row.cost_center,
+                    total: row.total,
+                    spent: row.spent,
+                    prefixed: parsed.prefixed
+                };
+                if (parsed.prefixed) prefixed.push(entry);
+                else legacy.push(entry);
             });
 
-            return budget;
+            const occupied = new Set();
+            prefixed.forEach(entry => {
+                applyBudgetRowToStore(store, entry.year, entry.monthName, entry.category, entry.cost_center, entry.total, entry.spent);
+                occupied.add(`${entry.year}${BUDGET_MONTH_YEAR_SEP}${entry.monthName}${BUDGET_MONTH_YEAR_SEP}${entry.category}${BUDGET_MONTH_YEAR_SEP}${entry.cost_center}`);
+            });
+
+            // Legado sem ano: aplica ao ano corrente só se ainda não existir valor prefixado (sem sobrescrever).
+            legacy.forEach(entry => {
+                const key = `${entry.year}${BUDGET_MONTH_YEAR_SEP}${entry.monthName}${BUDGET_MONTH_YEAR_SEP}${entry.category}${BUDGET_MONTH_YEAR_SEP}${entry.cost_center}`;
+                if (occupied.has(key)) return;
+                applyBudgetRowToStore(store, entry.year, entry.monthName, entry.category, entry.cost_center, entry.total, entry.spent);
+            });
+
+            budgetDataByYear = store;
+            if (!Number.isFinite(Number(activeBudgetYear))) activeBudgetYear = fallbackYear;
+            if (!budgetDataByYear[activeBudgetYear]) ensureBudgetYearData(activeBudgetYear);
+            syncActiveBudgetData();
+            return budgetData;
         }
 
         async function saveBudgetData() {
             if (!canViewBudget()) return false;
+            syncActiveBudgetData();
             const rows = [];
-            budgetData.forEach(monthData => {
-                (monthData.categories || []).forEach(category => {
-                    (category.items || []).forEach(item => {
-                        rows.push({
-                            month: monthData.month,
-                            category: category.label,
-                            cost_center: item.label,
-                            total: item.total ?? 0,
-                            spent: item.spent ?? 0
+            Object.keys(budgetDataByYear).forEach(yearKey => {
+                const year = Number(yearKey);
+                const yearData = budgetDataByYear[year];
+                if (!Array.isArray(yearData)) return;
+                yearData.forEach(monthData => {
+                    (monthData.categories || []).forEach(category => {
+                        (category.items || []).forEach(item => {
+                            rows.push({
+                                month: encodeBudgetMonthKey(year, monthData.month),
+                                category: category.label,
+                                cost_center: item.label,
+                                total: item.total ?? 0,
+                                spent: item.spent ?? 0
+                            });
                         });
                     });
                 });
@@ -3534,10 +3635,55 @@
             return true;
         }
 
-        let budgetData = [];
+        /** Divide o anual em 12 meses (cêntimos). O resto de arredondamento vai para o último mês. */
+        function distributeAnnualToMonthlyTotals(annualValue) {
+            const cents = Math.round(Number(annualValue) * 100);
+            if (!Number.isFinite(cents) || cents < 0) {
+                return Array.from({ length: 12 }, () => 0);
+            }
+            const base = Math.floor(cents / 12);
+            const remainder = cents - (base * 12);
+            return Array.from({ length: 12 }, (_, index) => {
+                const monthCents = index === 11 ? base + remainder : base;
+                return monthCents / 100;
+            });
+        }
 
-        let activeBudgetMonth = 0;
-        let activeBudgetCategory = "Padrões";
+        function getCenterAnnualBudget(categoryLabel, centerLabel, yearData = budgetData) {
+            return (yearData || []).reduce((sum, monthData) => {
+                const category = monthData.categories?.find(c => c.label === categoryLabel);
+                const item = category?.items?.find(i => i.label === centerLabel);
+                return sum + (Number(item?.total) || 0);
+            }, 0);
+        }
+
+        function getCenterAnnualSpent(categoryLabel, centerLabel, yearData = budgetData) {
+            return (yearData || []).reduce((sum, monthData) => {
+                const category = monthData.categories?.find(c => c.label === categoryLabel);
+                const item = category?.items?.find(i => i.label === centerLabel);
+                return sum + (Number(item?.spent) || 0);
+            }, 0);
+        }
+
+        function setCenterAnnualBudgetTotals(categoryLabel, centerLabel, annualValue) {
+            const monthlyTotals = distributeAnnualToMonthlyTotals(annualValue);
+            (budgetData || []).forEach((monthData, monthIndex) => {
+                const category = monthData.categories?.find(c => c.label === categoryLabel);
+                const item = category?.items?.find(i => i.label === centerLabel);
+                if (!item) return;
+                // Só altera o budget (total). Nunca toca em spent / histórico de gastos.
+                item.total = monthlyTotals[monthIndex] ?? 0;
+            });
+        }
+
+        function getPurchaseBudgetYear(item) {
+            const dateKey = typeof toPurchaseDateKey === 'function' ? toPurchaseDateKey(item?.purchaseDate) : '';
+            if (dateKey && /^\d{4}/.test(dateKey)) {
+                const year = Number(dateKey.slice(0, 4));
+                if (Number.isFinite(year)) return year;
+            }
+            return getDefaultBudgetYear();
+        }
 
         const purchaseLabOptions = [
             "U2", "U3", "U4", "U5",
@@ -4609,69 +4755,28 @@
         }
 
         function updateBudgetAnnualSummary() {
-            const input = document.getElementById('budgetAnnualTotalInput');
-            if (!input || document.activeElement === input) return;
-            input.value = formatCurrency(getAnnualBudgetTotal());
+            const el = document.getElementById('budgetAnnualTotalInput');
+            const yearLabel = document.getElementById('budgetAnnualYearLabel');
+            if (yearLabel) yearLabel.textContent = String(activeBudgetYear);
+            if (!el) return;
+            if (el.tagName === 'INPUT') {
+                if (document.activeElement === el) return;
+                el.value = formatCurrency(getAnnualBudgetTotal());
+            } else {
+                el.textContent = formatCurrency(getAnnualBudgetTotal());
+            }
         }
 
-        async function updateAnnualBudgetTotal(rawValue) {
+        async function updateCostCenterAnnualBudget(categoryLabel, centerLabel, rawValue) {
             if (!canViewBudget()) return;
+            syncActiveBudgetData();
             const parsed = parseFloat(String(rawValue).replace(/[^0-9.-]/g, ''));
             if (!Number.isFinite(parsed) || parsed < 0) return;
 
-            const currentTotal = getAnnualBudgetTotal();
-            if (currentTotal <= 0) return;
-
-            const factor = parsed / currentTotal;
-            budgetData.forEach(month => {
-                month.categories.forEach(category => {
-                    category.items.forEach(item => {
-                        item.total = Math.round(item.total * factor);
-                    });
-                });
-            });
-
-            const newTotal = getAnnualBudgetTotal();
-            const diff = Math.round(parsed - newTotal);
-            if (diff !== 0) {
-                const firstItem = budgetData[0]?.categories[0]?.items[0];
-                if (firstItem) firstItem.total += diff;
-            }
-
+            setCenterAnnualBudgetTotals(categoryLabel, centerLabel, parsed);
             await saveBudgetData();
-            renderBudgets();
+            renderBudgetMonthContent();
             renderAlerts();
-        }
-
-        function refreshBudgetItemCardDisplay(monthIndex, item) {
-            const card = document.querySelector(`[data-budget-card="${getBudgetCardKey(monthIndex, item.label)}"]`);
-            if (!card) return;
-
-            const usagePercent = getBudgetUsagePercent(item.spent, item.total);
-            const percentLabel = formatBudgetUsagePercent(item.spent, item.total);
-            const progressWidth = getBudgetProgressWidth(item.spent, item.total);
-            const available = item.total - item.spent;
-            const percentEl = card.querySelector('[data-percent]');
-            const progressEl = card.querySelector('[data-progress-bar]');
-            const availableEl = card.querySelector('[data-available]');
-            const totalInput = card.querySelector('[data-budget-field="total"]');
-            const spentInput = card.querySelector('[data-budget-field="spent"]');
-
-            if (totalInput && document.activeElement !== totalInput) totalInput.value = item.total;
-            if (spentInput && document.activeElement !== spentInput) spentInput.value = item.spent;
-
-            if (percentEl) {
-                percentEl.textContent = `${percentLabel}%`;
-                percentEl.className = `shrink-0 text-[11px] font-semibold tabular-nums ${getBudgetPercentTextColor(usagePercent, item.total)}`;
-            }
-            if (progressEl) {
-                progressEl.style.width = `${progressWidth}%`;
-                progressEl.className = `h-full rounded-full transition-all duration-500 ${getBudgetColor(usagePercent, item.total)}`;
-            }
-            if (availableEl) {
-                availableEl.textContent = `€ ${formatCurrency(available)}`;
-                availableEl.className = `mt-0.5 text-xs font-semibold ${getBudgetAvailableColor(available)}`;
-            }
         }
 
         function refreshBudgetMonthSummaryDisplays(monthIndex) {
@@ -4776,7 +4881,7 @@
                             oninput="updateCategoryBudgetTotal(${monthIndex}, '${activeBudgetCategory}', this.value)"
                             class="mt-1 w-full rounded-lg border border-white bg-white/90 px-2.5 py-2 text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-violet-200"
                         >
-                        <p class="mt-1.5 text-[11px] text-slate-500">Ajuste o total do mês para esta categoria. Os centros de custo são atualizados proporcionalmente.</p>
+                        <p class="mt-1.5 text-[11px] text-slate-500">Ajuste o total do mês para esta categoria. Os centros de custo são atualizados proporcionalmente. O budget anual de cada centro passa a ser a soma dos 12 meses.</p>
                     </div>
                 </div>
             `;
@@ -4784,6 +4889,7 @@
 
         async function updateCategoryBudgetTotal(monthIndex, categoryLabel, rawValue) {
             if (!canViewBudget()) return;
+            syncActiveBudgetData();
             const monthData = budgetData[monthIndex];
             if (!monthData) return;
 
@@ -4801,10 +4907,10 @@
                 items.forEach(item => { item.total = each; });
             } else {
                 const factor = parsed / currentTotal;
-                items.forEach(item => { item.total = Math.round(item.total * factor); });
+                items.forEach(item => { item.total = Math.round(item.total * factor * 100) / 100; });
                 const newTotal = items.reduce((sum, item) => sum + item.total, 0);
-                const diff = Math.round(parsed - newTotal);
-                if (diff !== 0) items[0].total += diff;
+                const diff = Math.round((parsed - newTotal) * 100) / 100;
+                if (diff !== 0) items[0].total = Math.round((items[0].total + diff) * 100) / 100;
             }
 
             await saveBudgetData();
@@ -4816,6 +4922,7 @@
 
         async function updateBudgetValue(monthIndex, itemLabel, field, rawValue) {
             if (!canViewBudget()) return;
+            syncActiveBudgetData();
             const monthData = budgetData[monthIndex];
             if (!monthData) return;
 
@@ -4831,7 +4938,7 @@
             updateBudgetAnnualSummary();
             const saved = await saveBudgetData();
             if (!saved) return;
-            budgetData = await loadBudgetData();
+            await loadBudgetData();
             renderAlerts();
         }
 
@@ -4850,6 +4957,21 @@
             }).join('');
         }
 
+        function renderBudgetYearSelect() {
+            const select = document.getElementById('budgetYearSelect');
+            if (!select) return;
+
+            const years = getAvailableBudgetYears();
+            if (!years.includes(Number(activeBudgetYear))) {
+                activeBudgetYear = years[0] || getDefaultBudgetYear();
+                syncActiveBudgetData();
+            }
+
+            select.innerHTML = years.map(year => `
+                <option value="${year}" ${year === Number(activeBudgetYear) ? 'selected' : ''}>${year}</option>
+            `).join('');
+        }
+
         function renderBudgetTabs() {
             const select = document.getElementById('budgetMonthSelect');
             if (!select) return;
@@ -4859,10 +4981,48 @@
             `).join('');
         }
 
+        function refreshBudgetItemCardDisplay(monthIndex, item) {
+            const card = document.querySelector(`[data-budget-card="${getBudgetCardKey(monthIndex, item.label)}"]`);
+            if (!card) return;
+
+            const usagePercent = getBudgetUsagePercent(item.spent, item.total);
+            const percentLabel = formatBudgetUsagePercent(item.spent, item.total);
+            const progressWidth = getBudgetProgressWidth(item.spent, item.total);
+            const available = item.total - item.spent;
+            const annualTotal = getCenterAnnualBudget(activeBudgetCategory, item.label);
+            const annualSpent = getCenterAnnualSpent(activeBudgetCategory, item.label);
+            const percentEl = card.querySelector('[data-percent]');
+            const progressEl = card.querySelector('[data-progress-bar]');
+            const availableEl = card.querySelector('[data-available]');
+            const totalInput = card.querySelector('[data-budget-field="total"]');
+            const spentInput = card.querySelector('[data-budget-field="spent"]');
+            const annualInput = card.querySelector('[data-budget-field="annual"]');
+            const annualSpentEl = card.querySelector('[data-annual-spent]');
+
+            if (totalInput && document.activeElement !== totalInput) totalInput.value = item.total;
+            if (spentInput && document.activeElement !== spentInput) spentInput.value = item.spent;
+            if (annualInput && document.activeElement !== annualInput) annualInput.value = annualTotal;
+            if (annualSpentEl) annualSpentEl.textContent = `€ ${formatCurrency(annualSpent)}`;
+
+            if (percentEl) {
+                percentEl.textContent = `${percentLabel}%`;
+                percentEl.className = `shrink-0 text-[11px] font-semibold tabular-nums ${getBudgetPercentTextColor(usagePercent, item.total)}`;
+            }
+            if (progressEl) {
+                progressEl.style.width = `${progressWidth}%`;
+                progressEl.className = `h-full rounded-full transition-all duration-500 ${getBudgetColor(usagePercent, item.total)}`;
+            }
+            if (availableEl) {
+                availableEl.textContent = `€ ${formatCurrency(available)}`;
+                availableEl.className = `mt-0.5 text-xs font-semibold ${getBudgetAvailableColor(available)}`;
+            }
+        }
+
         function renderBudgetMonthContent() {
             const container = document.getElementById('budgetInputsContainer');
             if (!container) return;
 
+            syncActiveBudgetData();
             const monthData = budgetData[activeBudgetMonth];
             const categoryData = getCurrentBudgetCategoryData(monthData);
             const categoryStyle = budgetCategories.find(c => c.label === activeBudgetCategory) || budgetCategories[0];
@@ -4874,36 +5034,52 @@
                     const percentLabel = formatBudgetUsagePercent(item.spent, item.total);
                     const progressWidth = getBudgetProgressWidth(item.spent, item.total);
                     const available = item.total - item.spent;
+                    const annualTotal = getCenterAnnualBudget(activeBudgetCategory, item.label);
+                    const annualSpent = getCenterAnnualSpent(activeBudgetCategory, item.label);
                     return `
                         <div class="bg-white p-3.5 rounded-xl border ${categoryStyle.cardBorder}" data-budget-card="${getBudgetCardKey(activeBudgetMonth, item.label)}">
                             <div class="mb-2.5">
                                 <p class="text-xs font-semibold ${categoryStyle.textColor}">${item.label}</p>
                             </div>
 
+                            <div class="mb-3">
+                                <label class="text-[9px] uppercase font-semibold text-slate-400">Budget anual ${activeBudgetYear} (€)</label>
+                                <input
+                                    type="text"
+                                    inputmode="decimal"
+                                    data-budget-field="annual"
+                                    value="${annualTotal}"
+                                    onfocus="this.select()"
+                                    onchange="updateCostCenterAnnualBudget(${JSON.stringify(activeBudgetCategory)}, ${JSON.stringify(item.label)}, this.value)"
+                                    class="mt-1 w-full rounded-lg border border-violet-200 bg-violet-50/40 px-2.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-violet-200"
+                                >
+                                <p class="mt-1 text-[10px] text-slate-500">Divide igualmente pelos 12 meses. Gasto anual: <span data-annual-spent>€ ${formatCurrency(annualSpent)}</span></p>
+                            </div>
+
                             <div class="grid grid-cols-2 gap-2 mb-3">
                                 <div>
-                                    <label class="text-[9px] uppercase font-semibold text-slate-400">Gasto (€)</label>
+                                    <label class="text-[9px] uppercase font-semibold text-slate-400">Gasto do mês (€)</label>
                                     <input
                                         type="text"
                                         inputmode="numeric"
                                         data-budget-field="spent"
                                         value="${item.spent}"
                                         onfocus="this.select()"
-                                        oninput="updateBudgetValue(${activeBudgetMonth}, '${item.label}', 'spent', this.value)"
+                                        oninput="updateBudgetValue(${activeBudgetMonth}, ${JSON.stringify(item.label)}, 'spent', this.value)"
                                         class="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs outline-none focus:ring-2 focus:ring-violet-200"
                                     >
-                                    <p class="mt-1.5 text-[9px] uppercase font-semibold text-slate-400">Disponível</p>
+                                    <p class="mt-1.5 text-[9px] uppercase font-semibold text-slate-400">Disponível no mês</p>
                                     <p class="mt-0.5 text-xs font-semibold ${getBudgetAvailableColor(available)}" data-available>€ ${formatCurrency(available)}</p>
                                 </div>
                                 <div>
-                                    <label class="text-[9px] uppercase font-semibold text-slate-400">Budget total (€)</label>
+                                    <label class="text-[9px] uppercase font-semibold text-slate-400">Budget mensal (€)</label>
                                     <input
                                         type="text"
                                         inputmode="numeric"
                                         data-budget-field="total"
                                         value="${item.total}"
                                         onfocus="this.select()"
-                                        oninput="updateBudgetValue(${activeBudgetMonth}, '${item.label}', 'total', this.value)"
+                                        oninput="updateBudgetValue(${activeBudgetMonth}, ${JSON.stringify(item.label)}, 'total', this.value)"
                                         class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-900 outline-none focus:ring-2 focus:ring-violet-200"
                                     >
                                 </div>
@@ -4944,6 +5120,7 @@
         function selectBudgetCategory(categoryName) {
             activeBudgetCategory = categoryName;
             renderBudgetCategoryTabs();
+            renderBudgetYearSelect();
             renderBudgetTabs();
             renderBudgetMonthContent();
         }
@@ -4954,8 +5131,19 @@
             renderBudgetMonthContent();
         }
 
+        function selectBudgetYear(year) {
+            const nextYear = Number(year);
+            if (!Number.isFinite(nextYear)) return;
+            activeBudgetYear = nextYear;
+            ensureBudgetYearData(activeBudgetYear);
+            syncActiveBudgetData();
+            renderBudgets();
+        }
+
         function renderBudgets() {
+            syncActiveBudgetData();
             renderBudgetCategoryTabs();
+            renderBudgetYearSelect();
             renderBudgetTabs();
             renderBudgetMonthContent();
             updateBudgetAnnualSummary();
@@ -5054,6 +5242,7 @@
                 const itemCategory = item.purchaseCategory || item.category || '';
                 if (itemCategory !== categoryLabel) return;
                 if (getPurchaseMonthName(item) !== monthName) return;
+                if (getPurchaseBudgetYear(item) !== Number(activeBudgetYear)) return;
 
                 const allocatedValue = getBudgetCenterAllocatedValue(item, centerLabel);
                 if (allocatedValue == null) return;
@@ -5088,7 +5277,7 @@
 
             titleEl.textContent = `Histórico — ${centerLabel}`;
             if (subtitleEl) {
-                subtitleEl.textContent = `${categoryLabel} · ${monthName}`;
+                subtitleEl.textContent = `${categoryLabel} · ${monthName} ${activeBudgetYear}`;
             }
             if (totalEl) {
                 totalEl.textContent = formatBudgetHistoryEuro(totalSpent);
@@ -6572,11 +6761,15 @@
                 ? (getPurchaseMonthName(currentItem) || monthNames[new Date().getMonth()])
                 : (monthNames[new Date().getMonth()] || '');
             const monthIndex = monthNames.indexOf(monthName);
-            if (monthLabelEl) monthLabelEl.textContent = monthName ? `(${monthName})` : '';
+            const previewYear = purchaseModalMode === 'edit-cost'
+                ? getPurchaseBudgetYear(currentItem)
+                : getDefaultBudgetYear();
+            const previewYearData = ensureBudgetYearData(previewYear);
+            if (monthLabelEl) monthLabelEl.textContent = monthName ? `(${monthName} ${previewYear})` : '';
 
             const totalCost = parseFloat(document.getElementById('purchaseTotalCost')?.value) || 0;
             const categoryLabel = getPurchaseModalCategoryLabel();
-            const categoryData = monthIndex >= 0 ? budgetData[monthIndex]?.categories?.find(item => item.label === categoryLabel) : null;
+            const categoryData = monthIndex >= 0 ? previewYearData[monthIndex]?.categories?.find(item => item.label === categoryLabel) : null;
             const rows = getPurchaseAllocationRowsFromDom();
             const oldAllocations = Array.isArray(currentItem?.purchaseCost?.allocations)
                 ? currentItem.purchaseCost.allocations
@@ -6659,10 +6852,12 @@
             }).join('');
         }
 
-        function adjustBudgetSpentForAllocations(monthName, categoryLabel, totalCost, allocations, sign) {
+        function adjustBudgetSpentForAllocations(monthName, categoryLabel, totalCost, allocations, sign, year = activeBudgetYear) {
+            const targetYear = Number(year) || getDefaultBudgetYear();
+            const yearData = ensureBudgetYearData(targetYear);
             const monthIndex = monthNames.indexOf(monthName);
             if (monthIndex < 0) return;
-            const categoryData = budgetData[monthIndex]?.categories?.find(item => item.label === categoryLabel);
+            const categoryData = yearData[monthIndex]?.categories?.find(item => item.label === categoryLabel);
             if (!categoryData) return;
 
             (allocations || []).forEach(({ center, percent }) => {
@@ -6672,6 +6867,10 @@
                 budgetItem.spent = (Number(budgetItem.spent) || 0) + (sign * delta);
                 if (budgetItem.spent < 0) budgetItem.spent = 0;
             });
+
+            if (Number(activeBudgetYear) === targetYear) {
+                syncActiveBudgetData();
+            }
         }
 
         function addPurchaseAllocationRow() {
@@ -6769,15 +6968,16 @@
                     : computedTotalCost;
                 const monthName = getPurchaseMonthName(existingItem) || oldCost.month || monthNames[new Date().getMonth()];
                 const monthIndex = monthNames.indexOf(monthName);
+                const budgetYear = getPurchaseBudgetYear(existingItem);
 
                 if (!(totalCost > 0)) {
                     return alert("Indique o preço/custo da compra para atualizar o budget com os centros de custo.");
                 }
 
                 if (oldAllocations.length && oldTotalCost > 0) {
-                    adjustBudgetSpentForAllocations(monthName, categoryLabel, oldTotalCost, oldAllocations, -1);
+                    adjustBudgetSpentForAllocations(monthName, categoryLabel, oldTotalCost, oldAllocations, -1, budgetYear);
                 }
-                adjustBudgetSpentForAllocations(monthName, categoryLabel, totalCost, rows, 1);
+                adjustBudgetSpentForAllocations(monthName, categoryLabel, totalCost, rows, 1, budgetYear);
 
                 shoppingList[index].purchaseCost = {
                     ...oldCost,
@@ -6804,10 +7004,13 @@
                 if (monthIndex >= 0) {
                     activeBudgetMonth = monthIndex;
                 }
+                activeBudgetYear = budgetYear;
+                ensureBudgetYearData(activeBudgetYear);
+                syncActiveBudgetData();
                 activeBudgetCategory = categoryLabel;
                 const saved = await saveBudgetData();
                 if (saved) {
-                    budgetData = await loadBudgetData();
+                    await loadBudgetData();
                 }
                 shoppingList = await loadShoppingList();
                 renderShopping();
@@ -6869,13 +7072,17 @@
                 return alert("Erro ao registar a compra no Supabase.");
             }
 
-            adjustBudgetSpentForAllocations(monthName, categoryLabel, totalCost, rows, 1);
+            const budgetYear = getPurchaseBudgetYear(shoppingList[index]);
+            adjustBudgetSpentForAllocations(monthName, categoryLabel, totalCost, rows, 1, budgetYear);
 
             activeBudgetCategory = categoryLabel;
             activeBudgetMonth = monthIndex;
+            activeBudgetYear = budgetYear;
+            ensureBudgetYearData(activeBudgetYear);
+            syncActiveBudgetData();
             const saved = await saveBudgetData();
             if (saved) {
-                budgetData = await loadBudgetData();
+                await loadBudgetData();
             }
             shoppingList = await loadShoppingList();
             renderShopping();
@@ -8407,7 +8614,8 @@
 
         function getBudgetAlerts() {
             const monthIndex = new Date().getMonth();
-            const monthData = budgetData[monthIndex];
+            const yearData = ensureBudgetYearData(getDefaultBudgetYear());
+            const monthData = yearData[monthIndex];
             if (!monthData) return [];
 
             const items = [];
