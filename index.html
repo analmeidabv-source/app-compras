@@ -995,14 +995,14 @@
                                 </button>
                                 <div
                                     id="budgetAnnualCentersMenu"
-                                    class="hidden absolute left-0 top-full z-50 mt-1.5 w-[min(22rem,calc(100vw-2.5rem))] rounded-xl border border-slate-200 bg-white shadow-xl"
+                                    class="hidden absolute right-0 top-full z-50 mt-1.5 w-[min(19.5rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white shadow-xl"
                                     role="menu"
                                 >
-                                    <div class="border-b border-slate-100 px-3 py-2">
+                                    <div class="border-b border-slate-100 px-3.5 py-2.5">
                                         <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Budgets anuais</p>
                                         <p id="budgetAnnualCentersMenuSubtitle" class="mt-0.5 text-xs font-medium text-slate-700"></p>
                                     </div>
-                                    <div id="budgetAnnualCentersMenuList" class="max-h-72 overflow-y-auto p-2 space-y-1.5"></div>
+                                    <div id="budgetAnnualCentersMenuList" class="max-h-80 overflow-y-auto overscroll-contain p-2.5 space-y-2"></div>
                                 </div>
                             </div>
                         </div>
@@ -4750,6 +4750,28 @@
             return new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 0 }).format(value || 0);
         }
 
+        /** Apenas apresentação (2 casas, pt-PT). Não altera valores na BD. */
+        function formatBudgetMoneyDisplay(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '0,00';
+            return new Intl.NumberFormat('pt-PT', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(n);
+        }
+
+        function parseBudgetMoneyInput(rawValue) {
+            let s = String(rawValue ?? '').trim().replace(/\u00a0/g, ' ').replace(/\s/g, '');
+            if (!s) return NaN;
+            if (s.includes(',') && s.includes('.')) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else if (s.includes(',')) {
+                s = s.replace(',', '.');
+            }
+            const parsed = parseFloat(s.replace(/[^0-9.-]/g, ''));
+            return Number.isFinite(parsed) ? parsed : NaN;
+        }
+
         function getBudgetColor(perc, total) {
             if (total != null && (!total || total <= 0)) return 'bg-slate-300';
             if (perc > 90) return 'bg-rose-500';
@@ -4865,26 +4887,29 @@
 
             list.innerHTML = items.map(item => {
                 const annualTotal = getCenterAnnualBudget(activeBudgetCategory, item.label);
+                const displayValue = formatBudgetMoneyDisplay(annualTotal);
                 const readOnlyAttr = canEdit ? '' : 'readonly';
                 const inputClass = canEdit
-                    ? 'w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-violet-200'
-                    : 'w-full rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-500 outline-none';
+                    ? 'w-full min-w-[6.5rem] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-right text-xs font-semibold tabular-nums text-slate-900 outline-none focus:ring-2 focus:ring-violet-200'
+                    : 'w-full min-w-[6.5rem] rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1.5 text-right text-xs font-semibold tabular-nums text-slate-500 outline-none';
                 return `
-                    <div class="rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-2" role="none">
-                        <label class="block text-[11px] font-medium text-slate-700 mb-1">${item.label}</label>
-                        <div class="flex items-center gap-1.5">
-                            <span class="text-[10px] text-slate-400">€</span>
-                            <input
-                                type="text"
-                                inputmode="decimal"
-                                data-budget-menu-center="${String(item.label).replace(/"/g, '&quot;')}"
-                                value="${annualTotal}"
-                                ${readOnlyAttr}
-                                onfocus="this.select()"
-                                onchange="updateCostCenterAnnualBudget(${JSON.stringify(activeBudgetCategory)}, ${JSON.stringify(item.label)}, this.value)"
-                                class="${inputClass}"
-                                aria-label="Budget anual ${item.label}"
-                            >
+                    <div class="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5" role="none">
+                        <div class="flex flex-col gap-1.5 min-[280px]:flex-row min-[280px]:items-center min-[280px]:justify-between min-[280px]:gap-3">
+                            <label class="min-w-0 flex-1 text-[11px] font-medium leading-snug text-slate-700">${item.label}</label>
+                            <div class="flex w-full min-[280px]:w-auto min-[280px]:max-w-[9.5rem] shrink-0 items-center gap-1.5">
+                                <span class="text-[10px] font-medium text-slate-400">€</span>
+                                <input
+                                    type="text"
+                                    inputmode="decimal"
+                                    data-budget-menu-center="${String(item.label).replace(/"/g, '&quot;')}"
+                                    value="${displayValue}"
+                                    ${readOnlyAttr}
+                                    onfocus="this.select()"
+                                    onchange="updateCostCenterAnnualBudget(${JSON.stringify(activeBudgetCategory)}, ${JSON.stringify(item.label)}, this.value)"
+                                    class="${inputClass}"
+                                    aria-label="Budget anual ${item.label}"
+                                >
+                            </div>
                         </div>
                     </div>
                 `;
@@ -4894,7 +4919,7 @@
         async function updateCostCenterAnnualBudget(categoryLabel, centerLabel, rawValue) {
             if (!canViewBudget()) return;
             syncActiveBudgetData();
-            const parsed = parseFloat(String(rawValue).replace(/[^0-9.-]/g, ''));
+            const parsed = parseBudgetMoneyInput(rawValue);
             if (!Number.isFinite(parsed) || parsed < 0) return;
 
             setCenterAnnualBudgetTotals(categoryLabel, centerLabel, parsed);
@@ -5134,7 +5159,7 @@
 
             if (totalInput && document.activeElement !== totalInput) totalInput.value = item.total;
             if (spentInput && document.activeElement !== spentInput) spentInput.value = item.spent;
-            if (annualInput && document.activeElement !== annualInput) annualInput.value = annualTotal;
+            if (annualInput && document.activeElement !== annualInput) annualInput.value = formatBudgetMoneyDisplay(annualTotal);
             if (annualSpentEl) annualSpentEl.textContent = `€ ${formatCurrency(annualSpent)}`;
             if (annualAvailableEl) {
                 annualAvailableEl.textContent = `€ ${formatCurrency(annualAvailable)}`;
@@ -5271,7 +5296,7 @@
                                 inputmode="decimal"
                                 data-budget-field="annual"
                                 data-budget-edit-center="${String(item.label).replace(/"/g, '&quot;')}"
-                                value="${annualTotal}"
+                                value="${formatBudgetMoneyDisplay(annualTotal)}"
                                 ${readOnlyAttr}
                                 onfocus="this.select()"
                                 onchange="updateCostCenterAnnualBudget(${JSON.stringify(activeBudgetCategory)}, ${JSON.stringify(item.label)}, this.value)"
